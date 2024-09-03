@@ -6,6 +6,24 @@ let renderer
 let world
 let loader
 
+class Vector{
+  public x: number
+  public y: number
+  public z: number
+  constructor(x: number, y: number, z: number){
+    this.x = x
+    this.y = y
+    this.z = z
+  }
+
+  public ToThreeVector(){
+    return new THREE.Vector3(this.x, this.y, this.z)
+  }
+  public ToCannonVector(){
+    return new CANNON.Vec3(this.x, this.y, this.z)
+  }
+}
+
 interface IComponent{
   Init():void
   GetName():string
@@ -75,7 +93,6 @@ class RigidBody implements IComponent{
       quaternion: this.quaternion
     })
   }
-
   public Init(): void {
     this.shape = this.collider.GetShape()
     this.InitBody()
@@ -98,6 +115,14 @@ class RigidBody implements IComponent{
   }
   public SetPosition(x: number, y: number, z: number): void{
     this.body.position.set(x,y,z)
+  }
+  public AddImpulse(forse: Vector, point: Vector){
+    this.body.applyImpulse(forse.ToCannonVector(), point.ToCannonVector())
+  }
+  public FixedRotation(x: boolean, y: boolean,z: boolean){
+    this.body.fixedRotation = true;
+    this.body.updateMassProperties();
+    this.body.fixedRotation = new CANNON.Vec3(x, y, z);
   }
 }
 class MeshRenderer implements IComponent{
@@ -150,7 +175,7 @@ class MeshController implements IComponent{
     "w": false,
     "a": false,
     "s": false,
-    "d": false
+    "d": false,
   } 
   constructor(meshRenderer, speed){
     this.renderer = meshRenderer
@@ -203,7 +228,9 @@ class RigidBodyController implements IComponent{
     "w": false,
     "a": false,
     "s": false,
-    "d": false
+    "d": false,
+    " ": false,
+    "f": false
   }
   constructor(body: RigidBody, speed: number){
     this.body = body
@@ -220,6 +247,7 @@ class RigidBodyController implements IComponent{
         this.keys[e.key] = false
       }
     })
+    
   }
   public GetName(): string {
     return "Rigid body controller"  
@@ -243,6 +271,12 @@ class RigidBodyController implements IComponent{
     }
     if(this.keys.w){
       currentPos.z -= this.speed
+    }
+    if (this.keys[" "]){
+      this.body.AddImpulse(new Vector(0,1,0), new Vector(0,0,0))
+    }
+    if(this.keys.f){
+      this.body.FixedRotation(true, false, true)
     }
     let {x, y, z} = currentPos
     this.body.SetPosition(x,y,z)
@@ -331,7 +365,8 @@ export class Engine{
     let planeMaterial = new THREE.MeshStandardMaterial({color: 'green'})
     let meshRenderer = new MeshRenderer(planeGeometry, planeMaterial)
     meshRenderer.SetPosition(0, -15, 0)
-    let collider = new Collider("box", {halfSize: new CANNON.Vec3(25,0.05,25)})
+    meshRenderer.SetEuler(-Math.PI / 2, 0,0 )
+    let collider = new Collider("plane", {normal: new CANNON.Vec3(0,1,0), constant: 0})
     let body = new RigidBody(meshRenderer, collider, 0)
     let plane = new GameObject()
     plane.AddComponent(meshRenderer)

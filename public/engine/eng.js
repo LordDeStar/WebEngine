@@ -8,6 +8,20 @@ var camera;
 var renderer;
 var world;
 var loader;
+var Vector = /** @class */ (function () {
+    function Vector(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+    Vector.prototype.ToThreeVector = function () {
+        return new THREE.Vector3(this.x, this.y, this.z);
+    };
+    Vector.prototype.ToCannonVector = function () {
+        return new CANNON.Vec3(this.x, this.y, this.z);
+    };
+    return Vector;
+}());
 var Collider = /** @class */ (function () {
     function Collider(form, params) {
         this.form = form.toLowerCase();
@@ -79,6 +93,14 @@ var RigidBody = /** @class */ (function () {
     RigidBody.prototype.SetPosition = function (x, y, z) {
         this.body.position.set(x, y, z);
     };
+    RigidBody.prototype.AddImpulse = function (forse, point) {
+        this.body.applyImpulse(forse.ToCannonVector(), point.ToCannonVector());
+    };
+    RigidBody.prototype.FixedRotation = function (x, y, z) {
+        this.body.fixedRotation = true;
+        this.body.updateMassProperties();
+        this.body.fixedRotation = new CANNON.Vec3(x, y, z);
+    };
     return RigidBody;
 }());
 var MeshRenderer = /** @class */ (function () {
@@ -127,7 +149,7 @@ var MeshController = /** @class */ (function () {
             "w": false,
             "a": false,
             "s": false,
-            "d": false
+            "d": false,
         };
         this.renderer = meshRenderer;
         this.speed = speed;
@@ -178,7 +200,9 @@ var RigidBodyController = /** @class */ (function () {
             "w": false,
             "a": false,
             "s": false,
-            "d": false
+            "d": false,
+            " ": false,
+            "f": false
         };
         this.body = body;
         this.speed = speed;
@@ -217,6 +241,12 @@ var RigidBodyController = /** @class */ (function () {
         }
         if (this.keys.w) {
             currentPos.z -= this.speed;
+        }
+        if (this.keys[" "]) {
+            this.body.AddImpulse(new Vector(0, 1, 0), new Vector(0, 0, 0));
+        }
+        if (this.keys.f) {
+            this.body.FixedRotation(true, false, true);
         }
         var x = currentPos.x, y = currentPos.y, z = currentPos.z;
         this.body.SetPosition(x, y, z);
@@ -317,7 +347,8 @@ var Engine = /** @class */ (function () {
         var planeMaterial = new THREE.MeshStandardMaterial({ color: 'green' });
         var meshRenderer = new MeshRenderer(planeGeometry, planeMaterial);
         meshRenderer.SetPosition(0, -15, 0);
-        var collider = new Collider("box", { halfSize: new CANNON.Vec3(25, 0.05, 25) });
+        meshRenderer.SetEuler(-Math.PI / 2, 0, 0);
+        var collider = new Collider("plane", { normal: new CANNON.Vec3(0, 1, 0), constant: 0 });
         var body = new RigidBody(meshRenderer, collider, 0);
         var plane = new GameObject();
         plane.AddComponent(meshRenderer);
