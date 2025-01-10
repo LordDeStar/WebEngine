@@ -11,23 +11,19 @@ export class Transform {
         this.rotation = vec3.create();
     }
 
-    public getMvpMatrix(projection: mat4): mat4 {
+    public getMvpMatrix(projection: mat4, view: mat4): mat4 {
         const modelMatrix = mat4.create();
 
-        // Примените масштабирование
         mat4.translate(modelMatrix, modelMatrix, this.position);
         mat4.scale(modelMatrix, modelMatrix, this.scale);
 
-        // Примените поворот
         mat4.rotateX(modelMatrix, modelMatrix, this.rotation[0]);
         mat4.rotateY(modelMatrix, modelMatrix, this.rotation[1]);
         mat4.rotateZ(modelMatrix, modelMatrix, this.rotation[2]);
 
-        // Примените перемещение
-
-
         const mvpMatrix = mat4.create();
-        mat4.multiply(mvpMatrix, projection, modelMatrix);
+        mat4.multiply(mvpMatrix, projection, view);
+        mat4.multiply(mvpMatrix, mvpMatrix, modelMatrix);
         return mvpMatrix;
     }
 }

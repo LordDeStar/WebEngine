@@ -4,7 +4,7 @@ export let gl: WebGLRenderingContext;
 export class GLUtilities {
     public static init(elementId?: string): HTMLCanvasElement {
         let canvas: HTMLCanvasElement;
-        if (elementId !== undefined) {
+        if (elementId) {
             canvas = <HTMLCanvasElement>document.getElementById(elementId);
             if (canvas === undefined) {
                 throw new Error(`Cannot find a canvas with id=[${elementId}]`)

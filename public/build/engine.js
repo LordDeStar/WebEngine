@@ -3607,6 +3607,182 @@ var forEach = function () {
 
 /***/ }),
 
+/***/ "./public/engine/core/components/Animator.ts":
+/*!***************************************************!*\
+  !*** ./public/engine/core/components/Animator.ts ***!
+  \***************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   AnimationClip: () => (/* binding */ AnimationClip),
+/* harmony export */   Animator: () => (/* binding */ Animator)
+/* harmony export */ });
+class AnimationClip {
+    constructor(target, update) {
+        this.target = target;
+        this.updateFunc = update;
+    }
+    Update() {
+        this.updateFunc(this.target);
+    }
+}
+class Animator {
+    constructor() {
+        this.name = "animator";
+        this.clips = [];
+        this.current = null;
+        this.currentIndex = -1;
+        this.owner = null;
+    }
+    AddClip(update) {
+        if (!this.owner)
+            return;
+        this.clips.push(new AnimationClip(this.owner, update));
+    }
+    Next() {
+        this.currentIndex++;
+        if (this.currentIndex >= 0 && this.currentIndex < this.clips.length) {
+            this.current = this.clips[this.currentIndex];
+        }
+    }
+    OnStart() {
+    }
+    OnUpdate() {
+        if (this.current) {
+            this.current.Update();
+        }
+    }
+    BeforeRemove() {
+    }
+}
+
+
+/***/ }),
+
+/***/ "./public/engine/core/components/Renderer.ts":
+/*!***************************************************!*\
+  !*** ./public/engine/core/components/Renderer.ts ***!
+  \***************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Renderer: () => (/* binding */ Renderer)
+/* harmony export */ });
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var _objects_geometry__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./../objects/geometry */ "./public/engine/core/objects/geometry.ts");
+/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../gl/gl */ "./public/engine/core/gl/gl.ts");
+
+
+
+class Renderer {
+    constructor(geometry) {
+        this.name = "renderer";
+        this.owner = null;
+        this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.create();
+        this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.create();
+        this.loadGeometry(geometry);
+    }
+    OnStart() {
+        var _a;
+        this._transform = (_a = this.owner) === null || _a === void 0 ? void 0 : _a.transform;
+    }
+    OnUpdate() {
+        this.draw();
+    }
+    BeforeRemove() {
+    }
+    OnResize(args) {
+        this._projection = args._projection;
+        this._viewMatrix = args._viewMatrix;
+    }
+    loadGeometry(template) {
+        this._geometry = _objects_geometry__WEBPACK_IMPORTED_MODULE_0__.Geometry.loadFromClass(template);
+    }
+    draw() {
+        if (!this._transform) {
+            console.error("[Transform] must be not null");
+            return;
+        }
+        else if (!this.material) {
+            console.error("[Material] must be not null");
+            return;
+        }
+        else if (!this._geometry) {
+            console.error("[Geometry] must be not null");
+            return;
+        }
+        this.material.basicUse();
+        let posLocation = this.material.getAttributePosition('pos', 'basic');
+        if (posLocation == -1) {
+            console.log('attrib not found');
+            return;
+        }
+        this._geometry.bindBuffers();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enableVertexAttribArray(posLocation);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.vertexAttribPointer(posLocation, 3, _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.FLOAT, false, 0, 0);
+        const mvpMatrix = this._transform.getMvpMatrix(this._projection, this._viewMatrix);
+        let loc = this.material.getUniformPosition('matrix', 'basic');
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+        this._geometry.draw();
+        this.material.edgeUse();
+        posLocation = this.material.getAttributePosition('pos', 'edge');
+        if (posLocation == -1) {
+            console.log('attrib not found');
+            return;
+        }
+        this._geometry.bindEdgeBuffers();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enableVertexAttribArray(posLocation);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.vertexAttribPointer(posLocation, 3, _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.FLOAT, false, 0, 0);
+        loc = this.material.getUniformPosition('matrix', 'edge');
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+        this._geometry.drawEdges();
+    }
+}
+
+
+/***/ }),
+
+/***/ "./public/engine/core/components/Script.ts":
+/*!*************************************************!*\
+  !*** ./public/engine/core/components/Script.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Script: () => (/* binding */ Script)
+/* harmony export */ });
+class Script {
+    constructor(scriptData) {
+        this.owner = null;
+        this.name = "script";
+        this._data = scriptData;
+    }
+    OnStart() {
+        this.init();
+        if (this._data.onStart)
+            this._data.onStart(this.owner);
+    }
+    OnUpdate() {
+        if (this._data.onUpdate)
+            this._data.onUpdate(this.owner, this._params);
+    }
+    BeforeRemove() {
+        if (this._data.beforeRemove)
+            this._data.beforeRemove(this.owner);
+        ;
+    }
+    init() {
+        if (this._data.init)
+            this._params = this._data.init();
+    }
+}
+
+
+/***/ }),
+
 /***/ "./public/engine/core/gl/gl.ts":
 /*!*************************************!*\
   !*** ./public/engine/core/gl/gl.ts ***!
@@ -3622,7 +3798,7 @@ let gl;
 class GLUtilities {
     static init(elementId) {
         let canvas;
-        if (elementId !== undefined) {
+        if (elementId) {
             canvas = document.getElementById(elementId);
             if (canvas === undefined) {
                 throw new Error(`Cannot find a canvas with id=[${elementId}]`);
@@ -3653,6 +3829,51 @@ class GLUtilities {
 
 /***/ }),
 
+/***/ "./public/engine/core/gl/light.ts":
+/*!****************************************!*\
+  !*** ./public/engine/core/gl/light.ts ***!
+  \****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Light: () => (/* binding */ Light)
+/* harmony export */ });
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
+
+class Light {
+    constructor() {
+        this.position = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(0, 0, 0);
+        this.direction = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(-1.0, -1.0, -1.0);
+        this.ambient = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(0.4, 0.4, 0.4, 1.0);
+        this.diffuse = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(1, 1, 1, 1.0);
+        this.specular = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(1.0, 1.0, 1.0, 1.0);
+        this.shininess = 32.0;
+    }
+    setPosition(x, y, z) {
+        this.position = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(x, y, z);
+    }
+    setDirection(x, y, z) {
+        this.direction = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(x, y, z);
+    }
+    setAmbient(r, g, b, a) {
+        this.ambient = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(r, g, b, a);
+    }
+    setDiffuse(r, g, b, a) {
+        this.diffuse = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(r, g, b, a);
+    }
+    setSpecular(r, g, b, a) {
+        this.specular = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(r, g, b, a);
+    }
+    setShininess(shininess) {
+        this.shininess = shininess;
+    }
+}
+
+
+/***/ }),
+
 /***/ "./public/engine/core/gl/material.ts":
 /*!*******************************************!*\
   !*** ./public/engine/core/gl/material.ts ***!
@@ -3670,10 +3891,11 @@ __webpack_require__.r(__webpack_exports__);
 
 
 class Material {
-    constructor() {
+    constructor(light) {
+        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(1.0, 1.0, 1.0, 1.0);
+        this._light = light;
         this._shader = this.loadShader();
         this._edgeShader = this.loadEdgeShader();
-        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(1.0, 1.0, 1.0, 1.0);
     }
     loadEdgeShader() {
         const vertex = `
@@ -3695,16 +3917,26 @@ class Material {
         const vertex = `
       attribute vec3 pos;
       uniform mat4 matrix;
+      varying vec3 vPos;
       void main(){
-        gl_Position = matrix * vec4(pos, 1.0);
+          gl_Position = matrix * vec4(pos, 1.0);
+          vPos = vec3(matrix * vec4(pos, 1.0));
       }
     `;
         const fragment = `
         precision mediump float;
         uniform vec4 color;
-      void main(void) {
-        gl_FragColor = color;
-      }
+        uniform vec3 lightDirection;
+        uniform vec4 ambientLight;
+        uniform vec4 diffuseLight;
+        varying vec3 vPos;
+        void main(void) {
+            vec3 normal = normalize(vPos);
+            vec3 lightDir = normalize(lightDirection);
+            float diff = max(dot(normal, lightDir), 0.0);
+            vec4 finalColor = ambientLight + diffuseLight * diff;
+            gl_FragColor = finalColor * color;
+        }
     `;
         return new _shader__WEBPACK_IMPORTED_MODULE_1__.Shader('basic', vertex, fragment);
     }
@@ -3721,6 +3953,12 @@ class Material {
         this._shader.use();
         let loc = this._shader.getUniformLocation('color');
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._color);
+        loc = this._shader.getUniformLocation('lightDirection');
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform3fv(loc, this._light.direction);
+        loc = this._shader.getUniformLocation('ambientLight');
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.ambient);
+        loc = this._shader.getUniformLocation('diffuseLight');
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.diffuse);
     }
     edgeUse() {
         this._edgeShader.use();
@@ -3823,103 +4061,129 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   GameObject: () => (/* binding */ GameObject)
 /* harmony export */ });
-/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./../gl/material */ "./public/engine/core/gl/material.ts");
-/* harmony import */ var _geometry__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./geometry */ "./public/engine/core/objects/geometry.ts");
-/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../gl/gl */ "./public/engine/core/gl/gl.ts");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
-/* harmony import */ var _transform__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./transform */ "./public/engine/core/objects/transform.ts");
-
-
-
-
+/* harmony import */ var _transform__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./transform */ "./public/engine/core/objects/transform.ts");
 
 class GameObject {
+    constructor(tag) {
+        this.components = [];
+        this.transform = new _transform__WEBPACK_IMPORTED_MODULE_0__.Transform();
+        this.tag = tag;
+    }
+    AddComponent(component) {
+        component.owner = this;
+        this.components.push(component);
+    }
+    GetComponent(name) {
+        let component = this.components.find(com => com.name === name);
+        if (component) {
+            return component;
+        }
+        console.error(`Component with name [${name}] is undefined`);
+    }
+    RemoveComponent(name) {
+        let component = this.components.findIndex(com => com.name === name);
+        if (component != -1) {
+            this.components[component].BeforeRemove();
+            this.components.splice(component, 1);
+        }
+        else {
+            console.error(`Component with name [${name}] is undefined`);
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ "./public/engine/core/objects/geometries.ts":
+/*!**************************************************!*\
+  !*** ./public/engine/core/objects/geometries.ts ***!
+  \**************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Cube: () => (/* binding */ Cube),
+/* harmony export */   Sphere: () => (/* binding */ Sphere),
+/* harmony export */   TemplateGeometry: () => (/* binding */ TemplateGeometry)
+/* harmony export */ });
+// geometries.js
+class TemplateGeometry {
+    constructor(vertices, normals, indices, edges) {
+        this.vertices = vertices;
+        this.normals = normals;
+        this.indices = indices;
+        this.edges = edges;
+    }
+}
+class Cube extends TemplateGeometry {
     constructor() {
-        this.transform = new _transform__WEBPACK_IMPORTED_MODULE_3__.Transform();
-        this._geometry = this.loadGeometry();
-        this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
-        this.transform.scale[0] = 100;
-        this.transform.scale[1] = 100;
-        this.transform.position[0] = 150;
-        this.transform.position[1] = 150;
-        this.transform.rotation[2] = Math.PI / 4;
-        this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_0__.Material();
-        this.material.setColor(0.5, 0.75, 0, 1);
-        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
-        gl_matrix__WEBPACK_IMPORTED_MODULE_4__.lookAt(viewMatrix, [500, 5000, 5], [0, 0, 0], [0, 1, 0]);
-        // Умножение матриц проекции и вида
-        gl_matrix__WEBPACK_IMPORTED_MODULE_4__.multiply(this._projection, this._projection, viewMatrix);
+        super([
+            -1, -1, -1,
+            1, -1, -1,
+            1, 1, -1,
+            -1, 1, -1,
+            -1, -1, 1,
+            1, -1, 1,
+            1, 1, 1,
+            -1, 1, 1,
+        ], [
+            -1, -1, -1,
+            1, -1, -1,
+            1, 1, -1,
+            -1, 1, -1,
+            -1, -1, 1,
+            1, -1, 1,
+            1, 1, 1,
+            -1, 1, 1,
+        ], [
+            0, 1, 2, 0, 2, 3,
+            4, 5, 6, 4, 6, 7,
+            0, 1, 5, 0, 5, 4,
+            2, 3, 7, 2, 7, 6,
+            1, 2, 6, 1, 6, 5,
+            0, 3, 7, 0, 7, 4
+        ], [
+            0, 1, 1, 2, 2, 3, 3, 0,
+            4, 5, 5, 6, 6, 7, 7, 4,
+            0, 4, 1, 5, 2, 6, 3, 7
+        ]);
     }
-    loadGeometry() {
-        let vertices = [
-            // Вершины куба
-            0.0, 0.0, 1.0,
-            1.0, 0.0, 1.0,
-            1.0, 1.0, 1.0,
-            0.0, 1.0, 1.0,
-            0.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            1.0, 1.0, 0.0,
-            0.0, 1.0, 0.0,
-        ];
-        let indices = [
-            // Индексы для граней куба
-            0, 1, 2,
-            0, 2, 3,
-            4, 5, 6,
-            4, 6, 7,
-            0, 1, 5,
-            0, 5, 4,
-            2, 3, 7,
-            2, 7, 6,
-            1, 2, 6,
-            1, 6, 5,
-            0, 3, 7,
-            0, 7, 4,
-        ];
-        let edgeIndices = [
-            // Индексы для ребер куба
-            0, 1,
-            1, 2,
-            2, 3,
-            3, 0,
-            4, 5,
-            5, 6,
-            6, 7,
-            7, 4,
-            0, 4,
-            1, 5,
-            2, 6,
-            3, 7,
-        ];
-        return new _geometry__WEBPACK_IMPORTED_MODULE_1__.Geometry(vertices, indices, edgeIndices);
+}
+function createSphere(radius, widthSegments, heightSegments) {
+    const _vertices = [];
+    const _normals = [];
+    const _indices = [];
+    const _edgeIndices = [];
+    for (let i = 0; i <= heightSegments; i++) {
+        const v = i / heightSegments;
+        const theta = v * Math.PI;
+        for (let j = 0; j <= widthSegments; j++) {
+            const u = j / widthSegments;
+            const phi = u * 2 * Math.PI;
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.cos(theta);
+            const z = radius * Math.sin(theta) * Math.sin(phi);
+            _vertices.push(x, y, z);
+            _normals.push(x, y, z);
+        }
     }
-    draw() {
-        this.material.basicUse();
-        let location = this.material.getAttributePosition('pos', 'basic');
-        if (location == -1) {
-            console.log('attrib not found');
-            return;
+    for (let i = 0; i < heightSegments; i++) {
+        for (let j = 0; j < widthSegments; j++) {
+            const first = (i * (widthSegments + 1)) + j;
+            const second = first + widthSegments + 1;
+            _indices.push(first, second, first + 1);
+            _indices.push(second, second + 1, first + 1);
+            _edgeIndices.push(first, second);
+            _edgeIndices.push(first, first + 1);
         }
-        this._geometry.bindBuffers();
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.enableVertexAttribArray(location);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.vertexAttribPointer(location, 3, _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.FLOAT, false, 0, 0);
-        const mvpMatrix = this.transform.getMvpMatrix(this._projection);
-        let loc = this.material.getUniformPosition('matrix', 'basic');
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
-        this._geometry.draw();
-        this.material.edgeUse();
-        location = this.material.getAttributePosition('pos', 'edge');
-        if (location == -1) {
-            console.log('attrib not found');
-            return;
-        }
-        this._geometry.bindEdgeBuffers();
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.enableVertexAttribArray(location);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.vertexAttribPointer(location, 3, _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.FLOAT, false, 0, 0);
-        loc = this.material.getUniformPosition('matrix', 'edge');
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
-        this._geometry.drawEdges();
+    }
+    return { _vertices, _normals, _indices, _edgeIndices };
+}
+class Sphere extends TemplateGeometry {
+    constructor() {
+        const { _vertices, _normals, _indices, _edgeIndices } = createSphere(1, 32, 32);
+        super(_vertices, _normals, _indices, _edgeIndices);
     }
 }
 
@@ -3937,31 +4201,43 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   Geometry: () => (/* binding */ Geometry)
 /* harmony export */ });
 /* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../gl/gl */ "./public/engine/core/gl/gl.ts");
+// geometry.js
 
 class Geometry {
-    constructor(vertices, indices, edges) {
+    constructor(vertices, normals, indices, edges) {
         this._vertices = new Float32Array(vertices);
+        this._normals = new Float32Array(normals);
         this._indices = new Uint16Array(indices);
         this._edges = new Uint16Array(edges);
         this._vertexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
+        this._normalBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         this._indicesBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         this._edgesBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         this.bindData();
     }
+    static loadFromClass(template) {
+        return new Geometry(template.vertices, template.normals, template.indices, template.edges);
+    }
     bindData() {
         this.bindBuffers();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normals, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         this.bindEdgeBuffers();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edges, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
     }
     bindBuffers() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertexBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normalBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normals, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indicesBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
     }
     bindEdgeBuffers() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertexBuffer);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edgesBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edges, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
     }
     draw() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TRIANGLES, this._indices.length, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
@@ -3993,18 +4269,16 @@ class Transform {
         this.position = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.create();
         this.rotation = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.create();
     }
-    getMvpMatrix(projection) {
+    getMvpMatrix(projection, view) {
         const modelMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
-        // Примените масштабирование
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.translate(modelMatrix, modelMatrix, this.position);
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.scale(modelMatrix, modelMatrix, this.scale);
-        // Примените поворот
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.rotateX(modelMatrix, modelMatrix, this.rotation[0]);
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.rotateY(modelMatrix, modelMatrix, this.rotation[1]);
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.rotateZ(modelMatrix, modelMatrix, this.rotation[2]);
-        // Примените перемещение
         const mvpMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
-        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.multiply(mvpMatrix, projection, modelMatrix);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.multiply(mvpMatrix, projection, view);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.multiply(mvpMatrix, mvpMatrix, modelMatrix);
         return mvpMatrix;
     }
 }
@@ -4074,56 +4348,114 @@ var __webpack_exports__ = {};
   \***********************************/
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   Engine: () => (/* binding */ Engine)
+/* harmony export */   AnimationClip: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip),
+/* harmony export */   Animator: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator),
+/* harmony export */   Cube: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Cube),
+/* harmony export */   Engine: () => (/* binding */ Engine),
+/* harmony export */   GameObject: () => (/* reexport safe */ _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject),
+/* harmony export */   Material: () => (/* reexport safe */ _gl_material__WEBPACK_IMPORTED_MODULE_4__.Material),
+/* harmony export */   Renderer: () => (/* reexport safe */ _components_Renderer__WEBPACK_IMPORTED_MODULE_5__.Renderer),
+/* harmony export */   Script: () => (/* reexport safe */ _components_Script__WEBPACK_IMPORTED_MODULE_0__.Script),
+/* harmony export */   Sphere: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Sphere),
+/* harmony export */   TemplateGeometry: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.TemplateGeometry),
+/* harmony export */   Transform: () => (/* reexport safe */ _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform)
 /* harmony export */ });
-/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
-/* harmony import */ var _objects_GameObject__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./objects/GameObject */ "./public/engine/core/objects/GameObject.ts");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var _components_Script__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./components/Script */ "./public/engine/core/components/Script.ts");
+/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
+/* harmony import */ var _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./objects/GameObject */ "./public/engine/core/objects/GameObject.ts");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
+/* harmony import */ var _gl_light__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gl/light */ "./public/engine/core/gl/light.ts");
+/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./gl/material */ "./public/engine/core/gl/material.ts");
+/* harmony import */ var _components_Renderer__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/Renderer */ "./public/engine/core/components/Renderer.ts");
+/* harmony import */ var _objects_transform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./objects/transform */ "./public/engine/core/objects/transform.ts");
+/* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./objects/geometries */ "./public/engine/core/objects/geometries.ts");
+/* harmony import */ var _components_Animator__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./components/Animator */ "./public/engine/core/components/Animator.ts");
 
 
 
-let red = 0;
-let blue = 0;
+
+
+
+
+
+
+
 class Engine {
     constructor() {
-        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.GLUtilities.init('main');
-        this._gameObject = new _objects_GameObject__WEBPACK_IMPORTED_MODULE_1__.GameObject();
-        if (_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl) {
-            this.start();
-        }
+        this._objects = [];
+        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init('main');
+        Engine._light = this.createLight();
+        this._viewMatrix = this.createViewMatrix();
+    }
+    createLight() {
+        const light = new _gl_light__WEBPACK_IMPORTED_MODULE_3__.Light();
+        light.setDirection(0.0, 1.0, 0.0);
+        return light;
     }
     resize() {
-        if (_gl_gl__WEBPACK_IMPORTED_MODULE_0__.GLUtilities.resizeCanvasToDisplaySize(this._canvas)) {
-            _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
-            this._gameObject._projection = this.createOrthoMatrix();
+        if (_gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.resizeCanvasToDisplaySize(this._canvas)) {
+            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+            this._objects.forEach(i => {
+                let renderer = i.GetComponent("renderer");
+                if (renderer) {
+                    renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: this._viewMatrix });
+                }
+            });
         }
     }
-    createOrthoMatrix() {
-        const left = 0;
-        const right = window.innerWidth;
-        const top = window.innerHeight;
-        const bottom = 0;
-        return gl_matrix__WEBPACK_IMPORTED_MODULE_2__.ortho(gl_matrix__WEBPACK_IMPORTED_MODULE_2__.create(), left, right, bottom, top, -1, 100);
+    createPerspectiveMatrix() {
+        const fieldOfView = 45 * Math.PI / 180;
+        const aspect = this._canvas.clientWidth / this._canvas.clientHeight;
+        const zNear = 0.1;
+        const zFar = 100.0;
+        const projectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.create();
+        gl_matrix__WEBPACK_IMPORTED_MODULE_9__.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+        return projectionMatrix;
+    }
+    createViewMatrix() {
+        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.create();
+        const eye = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 0, 3);
+        const center = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 0, 5);
+        const up = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 1, 0);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_9__.lookAt(viewMatrix, eye, center, up);
+        return viewMatrix;
     }
     start() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.clearColor(0, 0, 0, 1);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clearColor(0, 0, 0, 1);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_TEST);
         this.resize();
         window.addEventListener('resize', () => this.resize());
+        this._objects.forEach(i => {
+            i.components.forEach(j => {
+                j.OnStart();
+            });
+        });
         this.loop();
     }
     loop() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.clear(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.COLOR_BUFFER_BIT);
-        this._gameObject.draw();
-        this._gameObject.transform.rotation[1] += 0.01;
-        this._gameObject.transform.rotation[0] += 0.02;
-        red += 0.001;
-        blue += 0.001;
-        this._gameObject.material.setColor(red, 0, 0, 1);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clear(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.COLOR_BUFFER_BIT | _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_BUFFER_BIT);
+        this._objects.forEach(i => {
+            i.components.forEach(j => {
+                j.OnUpdate();
+            });
+        });
         requestAnimationFrame(() => this.loop());
     }
 }
 
+
+var __webpack_exports__AnimationClip = __webpack_exports__.AnimationClip;
+var __webpack_exports__Animator = __webpack_exports__.Animator;
+var __webpack_exports__Cube = __webpack_exports__.Cube;
 var __webpack_exports__Engine = __webpack_exports__.Engine;
-export { __webpack_exports__Engine as Engine };
+var __webpack_exports__GameObject = __webpack_exports__.GameObject;
+var __webpack_exports__Material = __webpack_exports__.Material;
+var __webpack_exports__Renderer = __webpack_exports__.Renderer;
+var __webpack_exports__Script = __webpack_exports__.Script;
+var __webpack_exports__Sphere = __webpack_exports__.Sphere;
+var __webpack_exports__TemplateGeometry = __webpack_exports__.TemplateGeometry;
+var __webpack_exports__Transform = __webpack_exports__.Transform;
+export { __webpack_exports__AnimationClip as AnimationClip, __webpack_exports__Animator as Animator, __webpack_exports__Cube as Cube, __webpack_exports__Engine as Engine, __webpack_exports__GameObject as GameObject, __webpack_exports__Material as Material, __webpack_exports__Renderer as Renderer, __webpack_exports__Script as Script, __webpack_exports__Sphere as Sphere, __webpack_exports__TemplateGeometry as TemplateGeometry, __webpack_exports__Transform as Transform };
 
 //# sourceMappingURL=engine.js.map
