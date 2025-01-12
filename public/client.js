@@ -16,7 +16,7 @@ let animator = new Animator();
 
 box.AddComponent(animator);
 box.AddComponent(renderer);
-box.AddComponent(new Script(testScript));
+//box.AddComponent(new Script(testScript));
 animator.AddClip((object) =>{
     object.transform.rotation[1] += 0.01;
 });
@@ -30,5 +30,6 @@ animator.Next();
 
 setTimeout(()=>{
     animator.Next();
-    renderer.loadGeometry(new Sphere());
+    //renderer.loadGeometry(new Sphere());
+    renderer.loadTexture("./fox.jpg");
 },5000);

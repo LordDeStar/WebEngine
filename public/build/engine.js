@@ -3700,6 +3700,14 @@ class Renderer {
     loadGeometry(template) {
         this._geometry = _objects_geometry__WEBPACK_IMPORTED_MODULE_0__.Geometry.loadFromClass(template);
     }
+    loadTexture(url) {
+        if (this.material) {
+            this.material.loadTexture(url);
+        }
+        else {
+            console.error(`Material not set, cannot load texture: ${url}`);
+        }
+    }
     draw() {
         if (!this._transform) {
             console.error("[Transform] must be not null");
@@ -3719,9 +3727,16 @@ class Renderer {
             console.log('attrib not found');
             return;
         }
+        let texCoordLocation = this.material.getAttributePosition('texCoord', 'basic');
+        if (texCoordLocation == -1) {
+            console.log('texCoord attrib not found');
+            return;
+        }
         this._geometry.bindBuffers();
         _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enableVertexAttribArray(posLocation);
         _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.vertexAttribPointer(posLocation, 3, _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.FLOAT, false, 0, 0);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enableVertexAttribArray(texCoordLocation);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.vertexAttribPointer(texCoordLocation, 2, _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.FLOAT, false, 0, 0);
         const mvpMatrix = this._transform.getMvpMatrix(this._projection, this._viewMatrix);
         let loc = this.material.getUniformPosition('matrix', 'basic');
         _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
@@ -3885,17 +3900,24 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   Material: () => (/* binding */ Material)
 /* harmony export */ });
 /* harmony import */ var _gl__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./gl */ "./public/engine/core/gl/gl.ts");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
 /* harmony import */ var _shader__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./shader */ "./public/engine/core/gl/shader.ts");
+/* harmony import */ var _texture__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./texture */ "./public/engine/core/gl/texture.ts");
 
 
 
+ // Импортируем новый класс Texture
 class Material {
     constructor(light) {
-        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(1.0, 1.0, 1.0, 1.0);
+        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_3__.fromValues(1.0, 1.0, 1.0, 1.0);
         this._light = light;
+        this._texture = new _texture__WEBPACK_IMPORTED_MODULE_2__.Texture();
         this._shader = this.loadShader();
         this._edgeShader = this.loadEdgeShader();
+    }
+    // Метод для загрузки текстуры
+    loadTexture(url) {
+        this._texture.loadTexture(_gl__WEBPACK_IMPORTED_MODULE_0__.gl, url);
     }
     loadEdgeShader() {
         const vertex = `
@@ -3916,11 +3938,14 @@ class Material {
     loadShader() {
         const vertex = `
       attribute vec3 pos;
+      attribute vec2 texCoord;
       uniform mat4 matrix;
       varying vec3 vPos;
+      varying vec2 vTexCoord;
       void main(){
           gl_Position = matrix * vec4(pos, 1.0);
           vPos = vec3(matrix * vec4(pos, 1.0));
+          vTexCoord = texCoord;
       }
     `;
         const fragment = `
@@ -3929,19 +3954,27 @@ class Material {
         uniform vec3 lightDirection;
         uniform vec4 ambientLight;
         uniform vec4 diffuseLight;
+        uniform sampler2D uSampler;
+        uniform bool hasTexture;
         varying vec3 vPos;
+        varying vec2 vTexCoord;
         void main(void) {
             vec3 normal = normalize(vPos);
             vec3 lightDir = normalize(lightDirection);
             float diff = max(dot(normal, lightDir), 0.0);
             vec4 finalColor = ambientLight + diffuseLight * diff;
-            gl_FragColor = finalColor * color;
+            vec4 texColor = texture2D(uSampler, vTexCoord);
+            if (hasTexture) {
+                gl_FragColor = finalColor * color * texColor;
+            } else {
+                gl_FragColor = finalColor * color;
+            }
         }
     `;
         return new _shader__WEBPACK_IMPORTED_MODULE_1__.Shader('basic', vertex, fragment);
     }
     setColor(red, green, blue, alpha) {
-        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(red, green, blue, alpha);
+        this._color = gl_matrix__WEBPACK_IMPORTED_MODULE_3__.fromValues(red, green, blue, alpha);
     }
     getAttributePosition(attr, shaderName) {
         return (shaderName != 'edge') ? this._shader.getAttributeLocation(attr) : this._edgeShader.getAttributeLocation(attr);
@@ -3959,6 +3992,13 @@ class Material {
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.ambient);
         loc = this._shader.getUniformLocation('diffuseLight');
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.diffuse);
+        loc = this._shader.getUniformLocation('hasTexture');
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform1i(loc, this._texture.isLoaded() ? 1 : 0);
+        if (this._texture.isLoaded()) {
+            this._texture.bind(_gl__WEBPACK_IMPORTED_MODULE_0__.gl, 0);
+            loc = this._shader.getUniformLocation('uSampler');
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform1i(loc, 0);
+        }
     }
     edgeUse() {
         this._edgeShader.use();
@@ -4051,6 +4091,74 @@ class Shader {
 
 /***/ }),
 
+/***/ "./public/engine/core/gl/texture.ts":
+/*!******************************************!*\
+  !*** ./public/engine/core/gl/texture.ts ***!
+  \******************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Texture: () => (/* binding */ Texture)
+/* harmony export */ });
+class Texture {
+    constructor() {
+        this._texture = null;
+    }
+    loadTexture(gl, url) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        const level = 0;
+        const internalFormat = gl.RGBA;
+        const width = 1;
+        const height = 1;
+        const border = 0;
+        const srcFormat = gl.RGBA;
+        const srcType = gl.UNSIGNED_BYTE;
+        const pixel = new Uint8Array([0, 0, 255, 255]); // непрозрачный синий пиксель
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixel);
+        const image = new Image();
+        image.onload = () => {
+            console.log(`Image loaded: ${url}`);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
+            if (this.isPowerOf2(image.width) && this.isPowerOf2(image.height)) {
+                gl.generateMipmap(gl.TEXTURE_2D);
+            }
+            else {
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            }
+            this._texture = texture;
+            console.log(`Texture loaded and bound: ${url}`);
+        };
+        image.onerror = () => {
+            console.error(`Failed to load image: ${url}`);
+        };
+        image.src = url;
+    }
+    bind(gl, unit) {
+        if (this._texture) {
+            gl.activeTexture(gl.TEXTURE0 + unit);
+            gl.bindTexture(gl.TEXTURE_2D, this._texture);
+            console.log(`Texture bound to unit: ${unit}`);
+        }
+        else {
+            console.error(`Texture not loaded`);
+        }
+    }
+    isLoaded() {
+        return this._texture !== null;
+    }
+    isPowerOf2(value) {
+        return (value & (value - 1)) == 0;
+    }
+}
+
+
+/***/ }),
+
 /***/ "./public/engine/core/objects/GameObject.ts":
 /*!**************************************************!*\
   !*** ./public/engine/core/objects/GameObject.ts ***!
@@ -4107,18 +4215,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   Sphere: () => (/* binding */ Sphere),
 /* harmony export */   TemplateGeometry: () => (/* binding */ TemplateGeometry)
 /* harmony export */ });
-// geometries.js
 class TemplateGeometry {
-    constructor(vertices, normals, indices, edges) {
+    constructor(vertices, normals, indices, edges, texCoords) {
         this.vertices = vertices;
         this.normals = normals;
         this.indices = indices;
         this.edges = edges;
+        this.texCoords = texCoords;
     }
 }
 class Cube extends TemplateGeometry {
     constructor() {
-        super([
+        const vertices = [
+            // Вершины
             -1, -1, -1,
             1, -1, -1,
             1, 1, -1,
@@ -4127,32 +4236,49 @@ class Cube extends TemplateGeometry {
             1, -1, 1,
             1, 1, 1,
             -1, 1, 1,
-        ], [
-            -1, -1, -1,
-            1, -1, -1,
-            1, 1, -1,
-            -1, 1, -1,
-            -1, -1, 1,
-            1, -1, 1,
-            1, 1, 1,
-            -1, 1, 1,
-        ], [
-            0, 1, 2, 0, 2, 3,
-            4, 5, 6, 4, 6, 7,
-            0, 1, 5, 0, 5, 4,
-            2, 3, 7, 2, 7, 6,
-            1, 2, 6, 1, 6, 5,
-            0, 3, 7, 0, 7, 4
-        ], [
-            0, 1, 1, 2, 2, 3, 3, 0,
-            4, 5, 5, 6, 6, 7, 7, 4,
-            0, 4, 1, 5, 2, 6, 3, 7
-        ]);
+        ];
+        const normals = [
+            // Нормали
+            0, 0, -1,
+            0, 0, -1,
+            0, 0, -1,
+            0, 0, -1,
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+        ];
+        const texCoords = [
+            // Текстурные координаты
+            0, 0, 1, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
+        ];
+        const indices = [
+            // Индексы
+            0, 1, 2, 0, 2, 3, // передняя грань
+            4, 5, 6, 4, 6, 7, // задняя грань
+            0, 1, 5, 0, 5, 4, // нижняя грань
+            2, 3, 7, 2, 7, 6, // верхняя грань
+            1, 2, 6, 1, 6, 5, // правая грань
+            0, 3, 7, 0, 7, 4 // левая грань
+        ];
+        const edges = [
+            // Ребра
+            0, 1, 1, 2, 2, 3, 3, 0, // передняя грань
+            4, 5, 5, 6, 6, 7, 7, 4, // задняя грань
+            0, 4, 1, 5, 2, 6, 3, 7 // соединяющие ребра
+        ];
+        super(vertices, normals, indices, edges, texCoords);
     }
 }
 function createSphere(radius, widthSegments, heightSegments) {
     const _vertices = [];
     const _normals = [];
+    const _texCoords = [];
     const _indices = [];
     const _edgeIndices = [];
     for (let i = 0; i <= heightSegments; i++) {
@@ -4166,6 +4292,7 @@ function createSphere(radius, widthSegments, heightSegments) {
             const z = radius * Math.sin(theta) * Math.sin(phi);
             _vertices.push(x, y, z);
             _normals.push(x, y, z);
+            _texCoords.push(u, 1 - v); // Текстурные координаты
         }
     }
     for (let i = 0; i < heightSegments; i++) {
@@ -4178,12 +4305,12 @@ function createSphere(radius, widthSegments, heightSegments) {
             _edgeIndices.push(first, first + 1);
         }
     }
-    return { _vertices, _normals, _indices, _edgeIndices };
+    return { _vertices, _normals, _indices, _edgeIndices, _texCoords };
 }
 class Sphere extends TemplateGeometry {
     constructor() {
-        const { _vertices, _normals, _indices, _edgeIndices } = createSphere(1, 32, 32);
-        super(_vertices, _normals, _indices, _edgeIndices);
+        const { _vertices, _normals, _indices, _edgeIndices, _texCoords } = createSphere(1, 32, 32);
+        super(_vertices, _normals, _indices, _edgeIndices, _texCoords);
     }
 }
 
@@ -4204,46 +4331,50 @@ __webpack_require__.r(__webpack_exports__);
 // geometry.js
 
 class Geometry {
-    constructor(vertices, normals, indices, edges) {
-        this._vertices = new Float32Array(vertices);
-        this._normals = new Float32Array(normals);
-        this._indices = new Uint16Array(indices);
-        this._edges = new Uint16Array(edges);
-        this._vertexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
-        this._normalBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
-        this._indicesBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
-        this._edgesBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
-        this.bindData();
+    constructor() {
+        this._vertexBuffer = null;
+        this._texCoordBuffer = null;
+        this._indexBuffer = null;
+        this._edgeIndexBuffer = null;
+        this._vertexCount = 0;
+        this._edgeCount = 0;
     }
     static loadFromClass(template) {
-        return new Geometry(template.vertices, template.normals, template.indices, template.edges);
-    }
-    bindData() {
-        this.bindBuffers();
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normals, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        this.bindEdgeBuffers();
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edges, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        const geometry = new Geometry();
+        // Создаем буферы для вершин
+        geometry._vertexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._vertexBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.vertices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        // Создаем буферы для текстурных координат
+        geometry._texCoordBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._texCoordBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.texCoords), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        // Создаем буферы для индексов
+        geometry._indexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._indexBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.indices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        geometry._vertexCount = template.indices.length;
+        // Создаем буферы для ребер
+        geometry._edgeIndexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._edgeIndexBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.edges), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        geometry._edgeCount = template.edges.length;
+        return geometry;
     }
     bindBuffers() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertexBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normalBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._normals, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indicesBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._texCoordBuffer);
     }
     bindEdgeBuffers() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, this._vertexBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edgesBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edges, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, this._edgeIndexBuffer);
     }
     draw() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TRIANGLES, this._indices.length, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TRIANGLES, this._vertexCount, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
     }
     drawEdges() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.LINES, this._edges.length, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.LINES, this._edgeCount, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
     }
 }
 

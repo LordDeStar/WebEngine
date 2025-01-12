@@ -12,7 +12,7 @@ export class Renderer implements ResizableComponent {
     public material: Material | undefined;
     public _transform: Transform | undefined;
     public owner: GameObject | null = null;
-
+    public textureUrl: string | undefined;
     private _projection: mat4;
     private _viewMatrix: mat4;
     private _geometry: Geometry | undefined;
@@ -38,7 +38,13 @@ export class Renderer implements ResizableComponent {
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
-
+    public loadTexture(url: string): void{
+        if (this.material){
+            this.material.loadTexture(url);
+        } else {
+            console.error(`Material not set, cannot load texture: ${url}`);
+        }
+    }
     private draw(): void {
         if (!this._transform) {
             console.error("[Transform] must be not null");
@@ -59,9 +65,18 @@ export class Renderer implements ResizableComponent {
             return;
         }
 
+        let texCoordLocation = this.material.getAttributePosition('texCoord', 'basic');
+        if (texCoordLocation == -1) {
+            console.log('texCoord attrib not found');
+            return;
+        }
+
         this._geometry.bindBuffers();
         gl.enableVertexAttribArray(<GLuint>posLocation);
         gl.vertexAttribPointer(<GLuint>posLocation, 3, gl.FLOAT, false, 0, 0);
+
+        gl.enableVertexAttribArray(<GLuint>texCoordLocation);
+        gl.vertexAttribPointer(<GLuint>texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
         const mvpMatrix = this._transform.getMvpMatrix(this._projection, this._viewMatrix);
 
