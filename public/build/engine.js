@@ -3918,6 +3918,7 @@ class Material {
     // Метод для загрузки текстуры
     loadTexture(url) {
         this._texture.loadTexture(_gl__WEBPACK_IMPORTED_MODULE_0__.gl, url);
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.pixelStorei(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNPACK_FLIP_Y_WEBGL, true);
     }
     loadEdgeShader() {
         const vertex = `
@@ -3930,7 +3931,7 @@ class Material {
         const fragment = `
       precision mediump float;
       void main(void) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // черный цвет для ребер
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // черный цвет для ребер
       }
     `;
         return new _shader__WEBPACK_IMPORTED_MODULE_1__.Shader('edge', vertex, fragment);
@@ -3965,7 +3966,7 @@ class Material {
             vec4 finalColor = ambientLight + diffuseLight * diff;
             vec4 texColor = texture2D(uSampler, vTexCoord);
             if (hasTexture) {
-                gl_FragColor = finalColor * color * texColor;
+                gl_FragColor = finalColor * texColor;
             } else {
                 gl_FragColor = finalColor * color;
             }
@@ -4227,35 +4228,76 @@ class TemplateGeometry {
 class Cube extends TemplateGeometry {
     constructor() {
         const vertices = [
-            // Вершины
+            // Передняя грань
             -1, -1, -1,
             1, -1, -1,
             1, 1, -1,
             -1, 1, -1,
+            // Задняя грань
             -1, -1, 1,
             1, -1, 1,
             1, 1, 1,
             -1, 1, 1,
         ];
         const normals = [
-            // Нормали
+            // Нормали для каждой грани
+            0, 0, -1, // передняя грань
             0, 0, -1,
             0, 0, -1,
             0, 0, -1,
-            0, 0, -1,
+            0, 0, 1, // задняя грань
             0, 0, 1,
             0, 0, 1,
             0, 0, 1,
-            0, 0, 1,
+            // Нормали для остальных граней
+            0, -1, 0, // нижняя грань
+            0, -1, 0,
+            0, -1, 0,
+            0, -1, 0,
+            1, 0, 0, // правая грань
+            1, 0, 0,
+            1, 0, 0,
+            1, 0, 0,
+            -1, 0, 0, // левая грань
+            -1, 0, 0,
+            -1, 0, 0,
+            -1, 0, 0,
+            0, 1, 0, // верхняя грань
+            0, 1, 0,
+            0, 1, 0,
+            0, 1, 0,
         ];
         const texCoords = [
-            // Текстурные координаты
-            0, 0, 1, 0, 1, 1, 0, 1,
-            0, 0, 1, 0, 1, 1, 0, 1,
-            0, 0, 1, 0, 1, 1, 0, 1,
-            0, 0, 1, 0, 1, 1, 0, 1,
-            0, 0, 1, 0, 1, 1, 0, 1,
-            0, 0, 1, 0, 1, 1, 0, 1,
+            // Передняя грань
+            -1, 1,
+            1, 1,
+            1, -1,
+            -1, -1,
+            // Задняя грань
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, 1,
+            // Верхняя грань
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, 1,
+            // Нижняя грань
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, 1,
+            // Левая грань
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, 1,
+            // Правая грань
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, 1,
         ];
         const indices = [
             // Индексы

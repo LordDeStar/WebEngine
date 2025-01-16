@@ -27,9 +27,9 @@ animator.AddClip((object) => {
 world._objects.push(box);
 world.start();
 animator.Next();
-
+renderer.loadTexture("./fox.jpg");
 setTimeout(()=>{
-    animator.Next();
+    //animator.Next();
     //renderer.loadGeometry(new Sphere());
-    renderer.loadTexture("./fox.jpg");
+    
 },5000);

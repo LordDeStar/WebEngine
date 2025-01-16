@@ -22,6 +22,7 @@ export class Material {
   // Метод для загрузки текстуры
   public loadTexture(url: string): void {
     this._texture.loadTexture(gl, url);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   }
 
   private loadEdgeShader(): Shader {
@@ -35,7 +36,7 @@ export class Material {
     const fragment = `
       precision mediump float;
       void main(void) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // черный цвет для ребер
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // черный цвет для ребер
       }
     `;
 
@@ -72,7 +73,7 @@ export class Material {
             vec4 finalColor = ambientLight + diffuseLight * diff;
             vec4 texColor = texture2D(uSampler, vTexCoord);
             if (hasTexture) {
-                gl_FragColor = finalColor * color * texColor;
+                gl_FragColor = finalColor * texColor;
             } else {
                 gl_FragColor = finalColor * color;
             }
