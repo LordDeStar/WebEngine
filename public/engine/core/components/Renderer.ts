@@ -1,11 +1,13 @@
 import { TemplateGeometry } from '../objects/geometries';
 import { Transform } from './../objects/transform';
-import { mat4 } from 'gl-matrix';
+import { mat4, vec4 } from 'gl-matrix';
 import { Geometry } from './../objects/geometry';
 import { Component, ResizableComponent } from "./component";
 import { Material } from '../gl/material';
 import { GameObject } from '../objects/GameObject';
 import { gl } from '../gl/gl';
+import { Engine } from '../eng';
+import { GLUtilities } from '../gl/gl';
 
 export class Renderer implements ResizableComponent {
     public name: string = "renderer";
@@ -22,43 +24,66 @@ export class Renderer implements ResizableComponent {
         this._viewMatrix = mat4.create();
         this.loadGeometry(geometry);
     }
-    public OnStart(): void {
+
+    public async OnStart(): Promise<void> {
         this._transform = this.owner?.transform;
+        if (!this.material) {
+            const materials = await GLUtilities.loadMTL('../../../cube.mtl'); // Загрузите MTL-файл
+            if (materials) {
+                this.material = new Material(Engine._light, materials); // Используйте первый материал из MTL-файла
+            } else {
+                this.material = new Material(Engine._light, {
+                    name: 'default',
+                    Ns: 0,
+                    Ka: vec4.fromValues(0, 0, 0, 1),
+                    Kd: vec4.fromValues(1, 1, 1, 1),
+                    Ks: vec4.fromValues(0, 0, 0, 1),
+                    d: 1,
+                    illum: 0
+                });
+            }
+        }
     }
+
     public OnUpdate(): void {
         this.draw();
     }
-    public BeforeRemove(): void {
 
+    public BeforeRemove(): void {
+        // Очистка ресурсов, если необходимо
     }
+
     public OnResize(args: any): void {
         this._projection = args._projection;
         this._viewMatrix = args._viewMatrix;
     }
+
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
-    public loadTexture(url: string): void{
-        if (this.material){
+
+    public loadTexture(url: string): void {
+        if (this.material) {
             this.material.loadTexture(url);
         } else {
             console.error(`Material not set, cannot load texture: ${url}`);
         }
     }
+
     private draw(): void {
         if (!this._transform) {
             console.error("[Transform] must be not null");
             return;
-        }
-        else if (!this.material) {
+        } else if (!this.material) {
             console.error("[Material] must be not null");
             return;
-        }
-        else if (!this._geometry) {
+        } else if (!this._geometry) {
             console.error("[Geometry] must be not null");
             return;
         }
+
         this.material.basicUse();
+
         let posLocation = this.material.getAttributePosition('pos', 'basic');
         if (posLocation == -1) {
             console.log('attrib not found');
@@ -72,11 +97,6 @@ export class Renderer implements ResizableComponent {
         }
 
         this._geometry.bindBuffers();
-        gl.enableVertexAttribArray(<GLuint>posLocation);
-        gl.vertexAttribPointer(<GLuint>posLocation, 3, gl.FLOAT, false, 0, 0);
-
-        gl.enableVertexAttribArray(<GLuint>texCoordLocation);
-        gl.vertexAttribPointer(<GLuint>texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
         const mvpMatrix = this._transform.getMvpMatrix(this._projection, this._viewMatrix);
 
@@ -93,8 +113,6 @@ export class Renderer implements ResizableComponent {
         }
 
         this._geometry.bindEdgeBuffers();
-        gl.enableVertexAttribArray(posLocation);
-        gl.vertexAttribPointer(posLocation, 3, gl.FLOAT, false, 0, 0);
 
         loc = this.material.getUniformPosition('matrix', 'edge');
         gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));

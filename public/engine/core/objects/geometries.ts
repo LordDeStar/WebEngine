@@ -1,18 +1,81 @@
 export class TemplateGeometry {
     public vertices: number[];
     public normals: number[];
+    public texCoords: number[];
     public indices: number[];
     public edges: number[];
-    public texCoords: number[]; // Новое поле для текстурных координат
 
-    constructor(vertices: number[], normals: number[], indices: number[], edges: number[], texCoords: number[]) {
+    constructor(vertices: number[], normals: number[], texCoords: number[], indices: number[], edges: number[]) {
         this.vertices = vertices;
         this.normals = normals;
+        this.texCoords = texCoords;
         this.indices = indices;
         this.edges = edges;
-        this.texCoords = texCoords;
     }
+
+    public static async loadFromOBJ(url: string): Promise<TemplateGeometry> {
+        try {
+            const response = await fetch(url);
+            const data = await response.text();
+
+            const vertices: number[] = [];
+            const normals: number[] = [];
+            const texCoords: number[] = [];
+            const indices: number[] = [];
+            const edges: number[] = [];
+
+            const lines = data.split('\n');
+            lines.forEach(line => {
+                const parts = line.trim().split(/\s+/); // Используем регулярное выражение для разделения по любым пробельным символам
+                if (parts[0] === 'v') {
+                    vertices.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+                } else if (parts[0] === 'vn') {
+                    normals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+                } else if (parts[0] === 'vt') {
+                    texCoords.push(parseFloat(parts[1]), 1 - parseFloat(parts[2])); // Инвертируем V-координату
+                } else if (parts[0] === 'f') {
+                    const v1 = parts[1].split('/').map(Number);
+                    const v2 = parts[2].split('/').map(Number);
+                    const v3 = parts[3].split('/').map(Number);
+                    const v4 = parts[4] ? parts[4].split('/').map(Number) : null;
+
+                    indices.push(
+                        v1[0] - 1, v2[0] - 1, v3[0] - 1
+                    );
+
+                    if (v4) {
+                        indices.push(
+                            v4[0] - 1
+                        );
+                    }
+
+                    // Добавим ребра
+                    edges.push(
+                        v1[0] - 1, v2[0] - 1,
+                        v2[0] - 1, v3[0] - 1,
+                        v3[0] - 1, v1[0] - 1
+                    );
+
+                    if (v4) {
+                        edges.push(
+                            v3[0] - 1, v4[0] - 1,
+                            v4[0] - 1, v1[0] - 1
+                        );
+                    }
+                }
+            });
+
+            return new TemplateGeometry(vertices, normals, texCoords, indices, edges);
+        } catch (error) {
+            console.error('Ошибка загрузки модели:', error);
+            throw error;
+        }
+    }
+
+
+
 }
+
 
 
 export class Cube extends TemplateGeometry {
@@ -20,14 +83,14 @@ export class Cube extends TemplateGeometry {
         const vertices = [
             // Передняя грань
             -1, -1, -1,
-             1, -1, -1,
-             1,  1, -1,
-            -1,  1, -1,
+            1, -1, -1,
+            1, 1, -1,
+            -1, 1, -1,
             // Задняя грань
-            -1, -1,  1,
-             1, -1,  1,
-             1,  1,  1,
-            -1,  1,  1,
+            -1, -1, 1,
+            1, -1, 1,
+            1, 1, 1,
+            -1, 1, 1,
         ];
 
         const normals = [
@@ -60,43 +123,42 @@ export class Cube extends TemplateGeometry {
         ];
 
         const texCoords = [
-           // Передняя грань
-            -1, 1,
-            1, 1,
-            1,  -1,
-            -1,  -1,
+            // Передняя грань
+            2, 1, // левый верхний
+            -1, -1, // левый нижний
+            1, -1, // правый нижний
+            1, 1, // правый верхний
 
             // Задняя грань
-            -1, -1,
-            1, -1,
-            1,  1,
-            -1,  1,
+            1, 1, // правый верхний
+            1, -1, // правый нижний
+            -1, -1, // левый нижний
+            -1, 1, // левый верхний
 
             // Верхняя грань
-            -1, -1,
-            1, -1,
-            1,  1,
-            -1,  1,
+            -1, 1, // левый верхний
+            -1, -1, // левый нижний
+            1, -1, // правый нижний
+            1, 1, // правый верхний
 
             // Нижняя грань
-            -1, -1,
-            1, -1,
-            1,  1,
-            -1,  1,
+            -1, -1, // левый нижний
+            -1, 1, // левый верхний
+            1, 1, // правый верхний
+            1, -1, // правый нижний
 
             // Левая грань
-            -1, -1,
-            1, -1,
-            1,  1,
-            -1,  1,
+            -1, 1, // левый верхний
+            -1, -1, // левый нижний
+            1, -1, // правый нижний
+            1, 1, // правый верхний
 
             // Правая грань
-            -1, -1,
-            1, -1,
-            1,  1,
-            -1,  1,
+            1, 1, // правый верхний
+            1, -1, // правый нижний
+            -1, -1, // левый нижний
+            -1, 1, // левый верхний
         ];
-
         const indices = [
             // Индексы
             0, 1, 2, 0, 2, 3, // передняя грань

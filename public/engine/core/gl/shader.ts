@@ -22,14 +22,17 @@ export class Shader {
     public use(): void {
         gl.useProgram(this._program);
     }
+
     public getAttributeLocation(name: string): number {
         if (this._attributes[name] === undefined) throw new Error(`Shader [${this._name}] has no attribute [${name}]`);
         return this._attributes[`${name}`];
     }
+
     public getUniformLocation(name: string): WebGLUniformLocation {
         if (this._uniforms[name] === undefined) throw new Error(`Shader [${this._name}] has no uniform [${name}]`);
         return this._uniforms[`${name}`];
     }
+
     private loadShader(source: string, shaderType: number): WebGLShader {
         let shader: WebGLShader = <WebGLShader>gl.createShader(shaderType);
 
@@ -65,7 +68,8 @@ export class Shader {
             this._attributes[attrInfo.name] = gl.getAttribLocation(this._program, attrInfo.name);
         }
     }
-    private detectUniforms() {
+
+    private detectUniforms(): void {
         let count = gl.getProgramParameter(this._program, gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < count; i++) {
             let info = <WebGLActiveInfo | null>gl.getActiveUniform(this._program, i);
