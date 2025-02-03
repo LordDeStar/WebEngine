@@ -97,5 +97,6 @@ export {
   Cube,
   Sphere,
   TemplateGeometry,
-  Script
+  Script,
+  GLUtilities
 }

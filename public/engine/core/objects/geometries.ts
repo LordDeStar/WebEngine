@@ -26,13 +26,13 @@ export class TemplateGeometry {
 
             const lines = data.split('\n');
             lines.forEach(line => {
-                const parts = line.trim().split(/\s+/); // Используем регулярное выражение для разделения по любым пробельным символам
+                const parts = line.trim().split(/\s+/);
                 if (parts[0] === 'v') {
                     vertices.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
                 } else if (parts[0] === 'vn') {
                     normals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
                 } else if (parts[0] === 'vt') {
-                    texCoords.push(parseFloat(parts[1]), 1 - parseFloat(parts[2])); // Инвертируем V-координату
+                    texCoords.push(parseFloat(parts[1]), 1 - parseFloat(parts[2]));
                 } else if (parts[0] === 'f') {
                     const v1 = parts[1].split('/').map(Number);
                     const v2 = parts[2].split('/').map(Number);
@@ -65,14 +65,18 @@ export class TemplateGeometry {
                 }
             });
 
+            console.log('Vertices:', vertices);
+            console.log('Normals:', normals);
+            console.log('TexCoords:', texCoords);
+            console.log('Indices:', indices);
+            console.log('Edges:', edges);
+
             return new TemplateGeometry(vertices, normals, texCoords, indices, edges);
         } catch (error) {
             console.error('Ошибка загрузки модели:', error);
             throw error;
         }
     }
-
-
 
 }
 

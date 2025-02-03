@@ -4,7 +4,7 @@ import { testScript } from './test.js';
 let world = new Engine();
 
 let box = new GameObject("box");
-let geometry = await TemplateGeometry.loadFromOBJ('./cube.obj');
+let geometry = await TemplateGeometry.loadFromOBJ('./Vector.obj');
 let renderer = new Renderer(geometry);
 
 
@@ -26,25 +26,4 @@ animator.AddClip((object) => {
 
 world._objects.push(box);
 world.start();
-renderer.material.loadFromMLT('./cube.mlt');
-let rotating = false;
-document.addEventListener('keydown', (e) => {
-    if (e.key == 'ArrowRight') {
-        box.transform.rotation[1] += 0.03;
-    } else if (e.key == 'ArrowLeft') {
-        box.transform.rotation[1] -= 0.03;
-    } else if (e.key == 'ArrowUp') {
-        box.transform.rotation[0] += 0.03;
-    } else if (e.key == 'ArrowDown') {
-        box.transform.rotation[0] -= 0.03;
-    } else if (e.key == "Escape") {
-        rotating = !rotating;
-    }
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (rotating) {
-        box.transform.rotation[1] = e.clientX * 0.01;
-        box.transform.rotation[0] = e.clientY * 0.01;
-    }
-});
+animator.Next();

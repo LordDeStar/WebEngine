@@ -35,53 +35,87 @@ export class GLUtilities {
         return false;
     }
 
-    public static async loadMTL(url: string): Promise<MaterialProperties> {
+    public static async loadMTL(url: string): Promise<MaterialProperties[]> {
         try {
             const response = await fetch(url);
             const data = await response.text();
 
-            const materials: MaterialProperties[] = [];
-            let currentMaterial: MaterialProperties | null = null;
+            const materials: MaterialProperties[] = []; // Массив для хранения материалов
+            let currentMaterial: MaterialProperties | null = null; // Текущий материал
 
             const lines = data.split('\n');
-            lines.forEach(line => {
-                const parts = line.trim().split(' ');
-                if (parts[0] === 'newmtl') {
-                    if (currentMaterial) {
-                        materials.push(currentMaterial);
-                    }
-                    currentMaterial = {
-                        name: parts[1],
-                        Ns: 0,
-                        Ka: vec4.fromValues(0, 0, 0, 1),
-                        Kd: vec4.fromValues(0, 0, 0, 1),
-                        Ks: vec4.fromValues(0, 0, 0, 1),
-                        d: 1,
-                        illum: 0
-                    };
-                } else if (parts[0] === 'Ns') {
-                    currentMaterial!.Ns = parseFloat(parts[1]);
-                } else if (parts[0] === 'Ka') {
-                    currentMaterial!.Ka = vec4.fromValues(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 1);
-                } else if (parts[0] === 'Kd') {
-                    currentMaterial!.Kd = vec4.fromValues(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 1);
-                } else if (parts[0] === 'Ks') {
-                    currentMaterial!.Ks = vec4.fromValues(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 1);
-                } else if (parts[0] === 'd') {
-                    currentMaterial!.d = parseFloat(parts[1]);
-                } else if (parts[0] === 'illum') {
-                    currentMaterial!.illum = parseInt(parts[1]);
-                } else if (parts[0] === 'map_Kd') {
-                    currentMaterial!.map_Kd = parts[1];
-                }
-            });
+            for (const line of lines) {
+                // Пропускаем комментарии и пустые строки
+                if (line.startsWith('#') || line.trim() === '') continue;
 
+                const parts = line.trim().split(/\s+/);
+                const keyword = parts[0];
+
+                switch (keyword) {
+                    case 'newmtl':
+                        // Если текущий материал существует, добавляем его в массив
+                        if (currentMaterial) {
+                            materials.push(currentMaterial);
+                        }
+                        // Создаем новый материал
+                        currentMaterial = {
+                            name: parts[1],
+                            Ns: 0,
+                            Ka: vec4.fromValues(0, 0, 0, 1),
+                            Kd: vec4.fromValues(0, 0, 0, 1),
+                            Ks: vec4.fromValues(0, 0, 0, 1),
+                            d: 1,
+                            illum: 0
+                        };
+                        break;
+
+                    case 'Ns':
+                    case 'd':
+                        if (currentMaterial && !isNaN(parseFloat(parts[1]))) {
+                            currentMaterial[keyword] = parseFloat(parts[1]);
+                        }
+                        break;
+
+                    case 'Ka':
+                    case 'Kd':
+                    case 'Ks':
+                        if (currentMaterial && parts.length >= 4) {
+                            currentMaterial[keyword] = vec4.fromValues(
+                                parseFloat(parts[1]),
+                                parseFloat(parts[2]),
+                                parseFloat(parts[3]),
+                                1
+                            );
+                        }
+                        break;
+
+                    case 'illum':
+                        if (currentMaterial && !isNaN(parseInt(parts[1]))) {
+                            currentMaterial.illum = parseInt(parts[1]);
+                        }
+                        break;
+
+                    case 'map_Kd':
+                    case 'map_Bump':
+                    case 'map_Ks':
+                        if (currentMaterial) {
+                            const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
+                            currentMaterial[keyword] = baseUrl + parts[1];
+                        }
+                        break;
+
+                    default:
+                        console.warn(`Неизвестный параметр в MTL-файле: ${keyword}`);
+                        break;
+                }
+            }
+
+            // Добавляем последний материал в массив, если он существует
             if (currentMaterial) {
                 materials.push(currentMaterial);
             }
 
-            console.log(materials[0]);
-            return materials[0];
+            return materials;
         } catch (error) {
             console.error('Ошибка загрузки MTL-файла:', error);
             throw error;

@@ -28,11 +28,11 @@ export class Renderer implements ResizableComponent {
     public async OnStart(): Promise<void> {
         this._transform = this.owner?.transform;
         if (!this.material) {
-            const materials = await GLUtilities.loadMTL('../../../cube.mtl'); // Загрузите MTL-файл
+            const materials = await GLUtilities.loadMTL('../../../cube.mtl');
             if (materials) {
-                this.material = new Material(Engine._light, materials); // Используйте первый материал из MTL-файла
+                this.material = new Material(Engine._light, materials);
             } else {
-                this.material = new Material(Engine._light, {
+                this.material = new Material(Engine._light, [{
                     name: 'default',
                     Ns: 0,
                     Ka: vec4.fromValues(0, 0, 0, 1),
@@ -40,8 +40,9 @@ export class Renderer implements ResizableComponent {
                     Ks: vec4.fromValues(0, 0, 0, 1),
                     d: 1,
                     illum: 0
-                });
+                }]);
             }
+            this.material.setCurrentMaterial(0);
         }
     }
 
@@ -50,7 +51,6 @@ export class Renderer implements ResizableComponent {
     }
 
     public BeforeRemove(): void {
-        // Очистка ресурсов, если необходимо
     }
 
     public OnResize(args: any): void {
@@ -60,14 +60,6 @@ export class Renderer implements ResizableComponent {
 
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
-    }
-
-    public loadTexture(url: string): void {
-        if (this.material) {
-            this.material.loadTexture(url);
-        } else {
-            console.error(`Material not set, cannot load texture: ${url}`);
-        }
     }
 
     private draw(): void {

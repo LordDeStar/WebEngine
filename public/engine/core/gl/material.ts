@@ -2,7 +2,7 @@ import { gl, GLUtilities } from "./gl";
 import { vec4 } from "gl-matrix";
 import { Shader } from "./shader";
 import { Light } from "./light";
-import { Texture } from "./texture"; // Импортируем новый класс Texture
+import { Texture } from "./texture";
 
 export interface MaterialProperties {
   name: string;
@@ -13,6 +13,8 @@ export interface MaterialProperties {
   d: number;
   illum: number;
   map_Kd?: string;
+  map_Bump?: string;
+  map_Ks?: string;
 }
 
 export class Material {
@@ -20,26 +22,46 @@ export class Material {
   private _edgeShader: Shader;
   private _color: vec4;
   private _light: Light;
-  private _texture: Texture;
-  private _properties: MaterialProperties;
+  private _textures: Texture[] = [];
+  private _materials: MaterialProperties[] = [];
+  private _currentMaterialIndex: number = 0;
 
-  constructor(light: Light, properties: MaterialProperties) {
+  constructor(light: Light, materials: MaterialProperties[]) {
     this._color = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
     this._light = light;
-    this._texture = new Texture();
-    this._properties = properties;
+    this._materials = materials;
     this._shader = this.loadShader();
     this._edgeShader = this.loadEdgeShader();
+    this._materials.forEach((material, index) => {
+      if (material.map_Kd) {
+        const texture = new Texture();
+        texture.loadTexture(gl, material.map_Kd);
+        this._textures[index] = texture;
+      }
+    });
+  }
 
-    if (this._properties.map_Kd) {
-      this.loadTexture(this._properties.map_Kd);
+  public setCurrentMaterial(index: number): void {
+    if (index >= 0 && index < this._materials.length) {
+      this._currentMaterialIndex = index;
+    } else {
+      console.warn(`Индекс материала ${index} вне диапазона.`);
     }
   }
 
-  // Метод для загрузки текстуры
-  public loadTexture(url: string): void {
-    this._texture.loadTexture(gl, url);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  public getCurrentMaterial(): MaterialProperties {
+    return this._materials[this._currentMaterialIndex];
+  }
+
+  public loadTexture(url: string, index: number): void {
+    console.log(this._textures)
+    if (index >= 0 && index < this._materials.length) {
+      const texture = new Texture();
+      texture.loadTexture(gl, url);
+      this._textures[index] = texture;
+    } else {
+      console.warn(`Индекс материала ${index} вне диапазона.`);
+    }
   }
 
   private loadEdgeShader(): Shader {
@@ -53,7 +75,7 @@ export class Material {
     const fragment = `
       precision mediump float;
       void main(void) {
-        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // черный цвет для ребер
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // зеленый цвет для ребер
       }
     `;
 
@@ -63,55 +85,51 @@ export class Material {
   private loadShader(): Shader {
     const vertex = `
       attribute vec3 pos;
-attribute vec2 texCoord;
-uniform mat4 matrix;
-varying vec3 vPos;
-varying vec2 vTexCoord;
-void main(){
-    gl_Position = matrix * vec4(pos, 1.0);
-    vPos = vec3(matrix * vec4(pos, 1.0));
-    vTexCoord = texCoord;
-}
-
+      attribute vec2 texCoord;
+      uniform mat4 matrix;
+      varying vec3 vPos;
+      varying vec2 vTexCoord;
+      void main(){
+        gl_Position = matrix * vec4(pos, 1.0);
+        vPos = vec3(matrix * vec4(pos, 1.0));
+        vTexCoord = texCoord;
+      }
     `;
     const fragment = `
- precision mediump float;
+      precision mediump float;
 
-uniform vec4 Ka;
-uniform vec4 Kd;
-uniform vec4 Ks;
-uniform vec3 lightDirection;
-uniform vec4 ambientLight;
-uniform vec4 diffuseLight;
-uniform sampler2D uSampler;
-uniform bool hasTexture;
-varying vec3 vPos;
-varying vec2 vTexCoord;
+      uniform vec4 Ka;
+      uniform vec4 Kd;
+      uniform vec4 Ks;
+      uniform vec3 lightDirection;
+      uniform vec4 ambientLight;
+      uniform vec4 diffuseLight;
+      uniform sampler2D uSampler;
+      uniform bool hasTexture;
+      varying vec3 vPos;
+      varying vec2 vTexCoord;
 
-void main(void) {
-    vec3 normal = normalize(vPos);
-    vec3 lightDir = normalize(lightDirection);
-    float diff = max(dot(normal, lightDir), 0.0);
+      void main(void) {
+        vec3 normal = normalize(vPos);
+        vec3 lightDir = normalize(lightDirection);
+        float diff = max(dot(normal, lightDir), 0.0);
 
-    // Используем Ka для амбиентного освещения
-    vec4 ambient = ambientLight * Ka;
+        vec4 ambient = ambientLight * Ka;
 
-    // Используем Kd для диффузного освещения
-    vec4 diffuse = diffuseLight * Kd * diff;
+        vec4 diffuse = diffuseLight * Kd * diff;
 
-    // Используем Ks для зеркального отражения
-    vec4 specular = vec4(1.0) * Ks * pow(max(dot(reflect(-lightDir, normal), vec3(0.0, 0.0, 1.0)), 0.0), 32.0);
+        // Используем Ks для зеркального отражения
+        vec4 specular = vec4(1.0) * Ks * pow(max(dot(reflect(-lightDir, normal), vec3(0.0, 0.0, 1.0)), 0.0), 32.0);
 
-    vec4 finalColor = ambient + diffuse + specular;
+        vec4 finalColor = ambient + diffuse + specular;
 
-    vec4 texColor = texture2D(uSampler, vTexCoord);
-    if (hasTexture) {
-        gl_FragColor = finalColor * texColor;
-    } else {
-        gl_FragColor = finalColor;
-    }
-}
-
+        vec4 texColor = texture2D(uSampler, vTexCoord);
+        if (hasTexture) {
+          gl_FragColor = finalColor * texColor;
+        } else {
+          gl_FragColor = finalColor;
+        }
+      }
     `;
 
     return new Shader('basic', vertex, fragment);
@@ -122,28 +140,39 @@ void main(void) {
   }
 
   public getAttributePosition(attr: string, shaderName: string): number {
-    return (shaderName != 'edge') ? this._shader.getAttributeLocation(attr) : this._edgeShader.getAttributeLocation(attr);
+    return (shaderName !== 'edge') ? this._shader.getAttributeLocation(attr) : this._edgeShader.getAttributeLocation(attr);
   }
 
   public getUniformPosition(uniform: string, shaderName: string): WebGLUniformLocation {
-    return (shaderName != 'edge') ? this._shader.getUniformLocation(uniform) : this._edgeShader.getUniformLocation(uniform);
+    return (shaderName !== 'edge') ? this._shader.getUniformLocation(uniform) : this._edgeShader.getUniformLocation(uniform);
   }
 
   public async loadFromMLT(url: string): Promise<void> {
-    this._properties = await GLUtilities.loadMTL(url);
+    const materials = await GLUtilities.loadMTL(url);
+    this._materials = materials;
+    this._textures = []; // Сбрасываем текстуры
+    materials.forEach((material, index) => {
+      if (material.map_Kd) {
+        const texture = new Texture();
+        texture.loadTexture(gl, material.map_Kd);
+        this._textures[index] = texture;
+      }
+    });
   }
 
   public basicUse(): void {
     this._shader.use();
 
+    const currentMaterial = this.getCurrentMaterial();
+
     let loc = this._shader.getUniformLocation('Ka');
-    gl.uniform4fv(loc, this._properties.Ka);
+    gl.uniform4fv(loc, currentMaterial.Ka);
 
     loc = this._shader.getUniformLocation('Kd');
-    gl.uniform4fv(loc, this._properties.Kd);
+    gl.uniform4fv(loc, currentMaterial.Kd);
 
     loc = this._shader.getUniformLocation('Ks');
-    gl.uniform4fv(loc, this._properties.Ks);
+    gl.uniform4fv(loc, currentMaterial.Ks);
 
     loc = this._shader.getUniformLocation('lightDirection');
     gl.uniform3fv(loc, this._light.direction);
@@ -154,11 +183,12 @@ void main(void) {
     loc = this._shader.getUniformLocation('diffuseLight');
     gl.uniform4fv(loc, this._light.diffuse);
 
+    const texture = this._textures[this._currentMaterialIndex];
     loc = this._shader.getUniformLocation('hasTexture');
-    gl.uniform1i(loc, this._texture.isLoaded() ? 1 : 0);
+    gl.uniform1i(loc, texture && texture.isLoaded() ? 1 : 0);
 
-    if (this._texture.isLoaded()) {
-      this._texture.bind(gl, 0);
+    if (texture && texture.isLoaded()) {
+      texture.bind(gl, 0);
       loc = this._shader.getUniformLocation('uSampler');
       gl.uniform1i(loc, 0);
     }

@@ -16,10 +16,10 @@ export class GameObject {
         this.components.push(component);
     }
 
-    public GetComponent(name: string): Component | ResizableComponent | undefined {
+    public GetComponent<T extends Component>(name: string): T | undefined {
         let component = this.components.find(com => com.name === name);
         if (component) {
-            return component;
+            return component as T;
         }
         console.error(`Component with name [${name}] is undefined`);
     }
