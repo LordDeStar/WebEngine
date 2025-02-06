@@ -26,27 +26,23 @@ export class Geometry {
     geometry._vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, geometry._vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(template.vertices), gl.STATIC_DRAW);
-    console.log(`Vertices loaded: ${template.vertices.length}`);
 
     // Создаем буферы для текстурных координат
     geometry._texCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, geometry._texCoordBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(template.texCoords), gl.STATIC_DRAW);
-    console.log(`TexCoords loaded: ${template.texCoords.length}`);
 
     // Создаем буферы для индексов
     geometry._indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry._indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.indices), gl.STATIC_DRAW);
     geometry._vertexCount = template.indices.length;
-    console.log(`Indices loaded: ${template.indices.length}`);
 
     // Создаем буферы для ребер
     geometry._edgeIndexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry._edgeIndexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.edges), gl.STATIC_DRAW);
     geometry._edgeCount = template.edges.length;
-    console.log(`Edges loaded: ${template.edges.length}`);
 
     return geometry;
   }

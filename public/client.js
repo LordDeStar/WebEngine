@@ -4,7 +4,7 @@ import { testScript } from './test.js';
 let world = new Engine();
 
 let box = new GameObject("box");
-let geometry = await TemplateGeometry.loadFromOBJ('./Vector.obj');
+let geometry = await TemplateGeometry.loadFromOBJ('./cube.obj');
 let renderer = new Renderer(geometry);
 
 
@@ -19,11 +19,16 @@ box.AddComponent(renderer);
 
 animator.AddClip((object) => {
     object.transform.rotation[1] += 0.01;
+    object.transform.rotation[0] += 0.01;
+
+    object.transform.position[1] = Math.sin(object.transform.position[1] + 0.1);
 });
 animator.AddClip((object) => {
     object.transform.rotation[0] += 0.01;
 });
 
+
 world._objects.push(box);
-world.start();
+await world.start();
+renderer.loadTexture('./minecraft_desk.png');
 animator.Next();

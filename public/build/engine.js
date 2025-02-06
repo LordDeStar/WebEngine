@@ -3618,6 +3618,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   AnimationClip: () => (/* binding */ AnimationClip),
 /* harmony export */   Animator: () => (/* binding */ Animator)
 /* harmony export */ });
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 class AnimationClip {
     constructor(target, update) {
         this.target = target;
@@ -3647,6 +3656,8 @@ class Animator {
         }
     }
     OnStart() {
+        return __awaiter(this, void 0, void 0, function* () {
+        });
     }
     OnUpdate() {
         if (this.current) {
@@ -3692,19 +3703,21 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 class Renderer {
-    constructor(geometry) {
+    constructor(geometry, isDrawingEdges = false) {
         this.name = "renderer";
         this.owner = null;
         this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
         this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
+        this._isDrawingEdges = isDrawingEdges;
         this.loadGeometry(geometry);
+        this._isMaterialLoaded = false;
     }
     OnStart() {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
             this._transform = (_a = this.owner) === null || _a === void 0 ? void 0 : _a.transform;
             if (!this.material) {
-                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.loadMTL('../../../cube.mtl');
+                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.loadMTL('../../../default.mtl');
                 if (materials) {
                     this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_1__.Material(_eng__WEBPACK_IMPORTED_MODULE_3__.Engine._light, materials);
                 }
@@ -3720,6 +3733,7 @@ class Renderer {
                         }]);
                 }
                 this.material.setCurrentMaterial(0);
+                this._isMaterialLoaded = true;
             }
         });
     }
@@ -3728,12 +3742,22 @@ class Renderer {
     }
     BeforeRemove() {
     }
+    setColor(r, g, b, a) {
+        var _a;
+        if (this._isMaterialLoaded) {
+            (_a = this.material) === null || _a === void 0 ? void 0 : _a.setColor(r, g, b, a);
+        }
+    }
     OnResize(args) {
         this._projection = args._projection;
         this._viewMatrix = args._viewMatrix;
     }
     loadGeometry(template) {
         this._geometry = _objects_geometry__WEBPACK_IMPORTED_MODULE_0__.Geometry.loadFromClass(template);
+    }
+    loadTexture(url) {
+        var _a, _b;
+        (_a = this.material) === null || _a === void 0 ? void 0 : _a.loadTexture(url, (_b = this.material) === null || _b === void 0 ? void 0 : _b.getCurrentMaterialIndex());
     }
     draw() {
         if (!this._transform) {
@@ -3764,16 +3788,18 @@ class Renderer {
         let loc = this.material.getUniformPosition('matrix', 'basic');
         _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
         this._geometry.draw();
-        this.material.edgeUse();
-        posLocation = this.material.getAttributePosition('pos', 'edge');
-        if (posLocation == -1) {
-            console.log('attrib not found');
-            return;
+        if (this._isDrawingEdges) {
+            this.material.edgeUse();
+            posLocation = this.material.getAttributePosition('pos', 'edge');
+            if (posLocation == -1) {
+                console.log('attrib not found');
+                return;
+            }
+            this._geometry.bindEdgeBuffers();
+            loc = this.material.getUniformPosition('matrix', 'edge');
+            _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+            this._geometry.drawEdges();
         }
-        this._geometry.bindEdgeBuffers();
-        loc = this.material.getUniformPosition('matrix', 'edge');
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
-        this._geometry.drawEdges();
     }
 }
 
@@ -3790,6 +3816,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Script: () => (/* binding */ Script)
 /* harmony export */ });
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 class Script {
     constructor(scriptData) {
         this.owner = null;
@@ -3797,9 +3832,11 @@ class Script {
         this._data = scriptData;
     }
     OnStart() {
-        this.init();
-        if (this._data.onStart)
-            this._data.onStart(this.owner);
+        return __awaiter(this, void 0, void 0, function* () {
+            this.init();
+            if (this._data.onStart)
+                this._data.onStart(this.owner);
+        });
     }
     OnUpdate() {
         if (this._data.onUpdate)
@@ -3851,6 +3888,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _objects_transform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./objects/transform */ "./public/engine/core/objects/transform.ts");
 /* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./objects/geometries */ "./public/engine/core/objects/geometries.ts");
 /* harmony import */ var _components_Animator__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./components/Animator */ "./public/engine/core/components/Animator.ts");
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 
 
 
@@ -3902,16 +3948,18 @@ class Engine {
         return viewMatrix;
     }
     start() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clearColor(0, 0, 0, 1);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_TEST);
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        this._objects.forEach(i => {
-            i.components.forEach(j => {
-                j.OnStart();
-            });
+        return __awaiter(this, void 0, void 0, function* () {
+            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clearColor(0, 0, 0, 1);
+            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_TEST);
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            yield Promise.all(this._objects.map(obj => Promise.all(obj.components.map((component) => __awaiter(this, void 0, void 0, function* () {
+                if (typeof component.OnStart === 'function') {
+                    yield component.OnStart();
+                }
+            })))));
+            this.loop();
         });
-        this.loop();
     }
     loop() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clear(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.COLOR_BUFFER_BIT | _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_BUFFER_BIT);
@@ -4160,6 +4208,9 @@ class Material {
     getCurrentMaterial() {
         return this._materials[this._currentMaterialIndex];
     }
+    getCurrentMaterialIndex() {
+        return this._currentMaterialIndex;
+    }
     loadTexture(url, index) {
         console.log(this._textures);
         if (index >= 0 && index < this._materials.length) {
@@ -4210,6 +4261,7 @@ class Material {
       uniform vec4 ambientLight;
       uniform vec4 diffuseLight;
       uniform sampler2D uSampler;
+      uniform vec4 uColor;
       uniform bool hasTexture;
       varying vec3 vPos;
       varying vec2 vTexCoord;
@@ -4230,9 +4282,9 @@ class Material {
 
         vec4 texColor = texture2D(uSampler, vTexCoord);
         if (hasTexture) {
-          gl_FragColor = finalColor * texColor;
+          gl_FragColor = finalColor * texColor * uColor;
         } else {
-          gl_FragColor = finalColor;
+          gl_FragColor = finalColor * uColor;
         }
       }
     `;
@@ -4276,6 +4328,8 @@ class Material {
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.ambient);
         loc = this._shader.getUniformLocation('diffuseLight');
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._light.diffuse);
+        loc = this._shader.getUniformLocation('uColor');
+        _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform4fv(loc, this._color);
         const texture = this._textures[this._currentMaterialIndex];
         loc = this._shader.getUniformLocation('hasTexture');
         _gl__WEBPACK_IMPORTED_MODULE_0__.gl.uniform1i(loc, texture && texture.isLoaded() ? 1 : 0);
@@ -4555,11 +4609,6 @@ class TemplateGeometry {
                         }
                     }
                 });
-                console.log('Vertices:', vertices);
-                console.log('Normals:', normals);
-                console.log('TexCoords:', texCoords);
-                console.log('Indices:', indices);
-                console.log('Edges:', edges);
                 return new TemplateGeometry(vertices, normals, texCoords, indices, edges);
             }
             catch (error) {
@@ -4731,24 +4780,20 @@ class Geometry {
         geometry._vertexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._vertexBuffer);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.vertices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        console.log(`Vertices loaded: ${template.vertices.length}`);
         // Создаем буферы для текстурных координат
         geometry._texCoordBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._texCoordBuffer);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.texCoords), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        console.log(`TexCoords loaded: ${template.texCoords.length}`);
         // Создаем буферы для индексов
         geometry._indexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._indexBuffer);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.indices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         geometry._vertexCount = template.indices.length;
-        console.log(`Indices loaded: ${template.indices.length}`);
         // Создаем буферы для ребер
         geometry._edgeIndexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._edgeIndexBuffer);
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.edges), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         geometry._edgeCount = template.edges.length;
-        console.log(`Edges loaded: ${template.edges.length}`);
         return geometry;
     }
     bindBuffers() {

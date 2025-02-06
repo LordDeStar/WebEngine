@@ -56,17 +56,21 @@ class Engine {
     return viewMatrix;
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     gl.clearColor(0, 0, 0, 1);
     gl.enable(gl.DEPTH_TEST);
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
-    this._objects.forEach(i => {
-      i.components.forEach(j => {
-        j.OnStart();
-      })
-    });
+    await Promise.all(
+      this._objects.map(obj =>
+          Promise.all(obj.components.map(async component => {
+              if (typeof component.OnStart === 'function') {
+                  await component.OnStart();
+              }
+          }))
+      )
+  );
 
     this.loop();
   }

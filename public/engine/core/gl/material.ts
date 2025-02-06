@@ -52,7 +52,9 @@ export class Material {
   public getCurrentMaterial(): MaterialProperties {
     return this._materials[this._currentMaterialIndex];
   }
-
+  public getCurrentMaterialIndex(): number{
+    return this._currentMaterialIndex;
+  }
   public loadTexture(url: string, index: number): void {
     console.log(this._textures)
     if (index >= 0 && index < this._materials.length) {
@@ -105,6 +107,7 @@ export class Material {
       uniform vec4 ambientLight;
       uniform vec4 diffuseLight;
       uniform sampler2D uSampler;
+      uniform vec4 uColor;
       uniform bool hasTexture;
       varying vec3 vPos;
       varying vec2 vTexCoord;
@@ -125,9 +128,9 @@ export class Material {
 
         vec4 texColor = texture2D(uSampler, vTexCoord);
         if (hasTexture) {
-          gl_FragColor = finalColor * texColor;
+          gl_FragColor = finalColor * texColor * uColor;
         } else {
-          gl_FragColor = finalColor;
+          gl_FragColor = finalColor * uColor;
         }
       }
     `;
@@ -183,6 +186,9 @@ export class Material {
     loc = this._shader.getUniformLocation('diffuseLight');
     gl.uniform4fv(loc, this._light.diffuse);
 
+    loc = this._shader.getUniformLocation('uColor');
+    gl.uniform4fv(loc, this._color);
+    
     const texture = this._textures[this._currentMaterialIndex];
     loc = this._shader.getUniformLocation('hasTexture');
     gl.uniform1i(loc, texture && texture.isLoaded() ? 1 : 0);

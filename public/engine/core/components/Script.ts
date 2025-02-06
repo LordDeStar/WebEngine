@@ -11,7 +11,7 @@ export class Script implements Component {
         this._data = scriptData;
     }
 
-    public OnStart(): void {
+    public async OnStart(): Promise<void> {
         this.init();
         if (this._data.onStart)
             this._data.onStart(this.owner);

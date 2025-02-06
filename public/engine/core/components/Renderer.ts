@@ -18,17 +18,22 @@ export class Renderer implements ResizableComponent {
     private _projection: mat4;
     private _viewMatrix: mat4;
     private _geometry: Geometry | undefined;
+    private _isDrawingEdges: boolean;
+    private _isMaterialLoaded: boolean;
 
-    constructor(geometry: TemplateGeometry) {
+
+    constructor(geometry: TemplateGeometry, isDrawingEdges: boolean = false) {
         this._projection = mat4.create();
         this._viewMatrix = mat4.create();
+        this._isDrawingEdges = isDrawingEdges;
         this.loadGeometry(geometry);
+        this._isMaterialLoaded = false;
     }
 
     public async OnStart(): Promise<void> {
         this._transform = this.owner?.transform;
         if (!this.material) {
-            const materials = await GLUtilities.loadMTL('../../../cube.mtl');
+            const materials = await GLUtilities.loadMTL('../../../default.mtl');
             if (materials) {
                 this.material = new Material(Engine._light, materials);
             } else {
@@ -43,6 +48,7 @@ export class Renderer implements ResizableComponent {
                 }]);
             }
             this.material.setCurrentMaterial(0);
+            this._isMaterialLoaded = true;
         }
     }
 
@@ -52,7 +58,11 @@ export class Renderer implements ResizableComponent {
 
     public BeforeRemove(): void {
     }
-
+    public setColor(r: number, g: number, b: number, a: number): void{
+        if (this._isMaterialLoaded){ 
+            this.material?.setColor(r, g, b, a);
+        }
+    }
     public OnResize(args: any): void {
         this._projection = args._projection;
         this._viewMatrix = args._viewMatrix;
@@ -61,7 +71,9 @@ export class Renderer implements ResizableComponent {
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
-
+    public loadTexture(url: string): void{
+        this.material?.loadTexture(url, this.material?.getCurrentMaterialIndex());
+    }
     private draw(): void {
         if (!this._transform) {
             console.error("[Transform] must be not null");
@@ -96,18 +108,20 @@ export class Renderer implements ResizableComponent {
         gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
 
         this._geometry.draw();
+        if (this._isDrawingEdges){
+            this.material.edgeUse();
+            posLocation = this.material.getAttributePosition('pos', 'edge');
+            if (posLocation == -1) {
+                console.log('attrib not found');
+                return;
+            }
 
-        this.material.edgeUse();
-        posLocation = this.material.getAttributePosition('pos', 'edge');
-        if (posLocation == -1) {
-            console.log('attrib not found');
-            return;
+            this._geometry.bindEdgeBuffers();
+
+            loc = this.material.getUniformPosition('matrix', 'edge');
+            gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+            this._geometry.drawEdges();
         }
-
-        this._geometry.bindEdgeBuffers();
-
-        loc = this.material.getUniformPosition('matrix', 'edge');
-        gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
-        this._geometry.drawEdges();
+        
     }
 }

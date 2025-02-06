@@ -64,13 +64,6 @@ export class TemplateGeometry {
                     }
                 }
             });
-
-            console.log('Vertices:', vertices);
-            console.log('Normals:', normals);
-            console.log('TexCoords:', texCoords);
-            console.log('Indices:', indices);
-            console.log('Edges:', edges);
-
             return new TemplateGeometry(vertices, normals, texCoords, indices, edges);
         } catch (error) {
             console.error('Ошибка загрузки модели:', error);

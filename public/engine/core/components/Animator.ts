@@ -34,7 +34,7 @@ export class Animator implements Component {
         }
     }
 
-    public OnStart(): void {
+    public async OnStart(): Promise<void> {
 
     }
     public OnUpdate(): void {
