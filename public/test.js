@@ -7,7 +7,7 @@ export const testScript = {
 
     onStart: (gameObject) => {
         let renderer = gameObject.GetComponent("renderer");
-        renderer.material.setColor(0.6,0.6,0,1);
+        renderer.setColor(0.6,0.6,0,1);
     },
 
     onUpdate: (gameObject, params)=>{

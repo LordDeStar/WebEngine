@@ -61,18 +61,27 @@ export class Geometry {
     // Привязываем буфер индексов
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer);
   }
-
-
   public bindEdgeBuffers(): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this._vertexBuffer);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._edgeIndexBuffer);
   }
-
   public draw(): void {
     gl.drawElements(gl.TRIANGLES, this._vertexCount, gl.UNSIGNED_SHORT, 0);
   }
-
   public drawEdges(): void {
     gl.drawElements(gl.LINES, this._edgeCount, gl.UNSIGNED_SHORT, 0);
+  }
+
+  public toJson(): Promise<string> {
+    return new Promise<string>(resolve => {
+      resolve(JSON.stringify({
+        vertexBuffer: this._vertexBuffer,
+        texCoordsBuffer: this._texCoordBuffer,
+        indexBuffer: this._indexBuffer,
+        edgeIndexBuffer: this._edgeIndexBuffer,
+        vertexCount: this._vertexCount,
+        edgeCount: this._edgeCount
+      }));
+    });
   }
 }

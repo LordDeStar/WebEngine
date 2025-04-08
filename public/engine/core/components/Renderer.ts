@@ -20,20 +20,22 @@ export class Renderer implements ResizableComponent {
     private _geometry: Geometry | undefined;
     private _isDrawingEdges: boolean;
     private _isMaterialLoaded: boolean;
+    private _materialUrl: string
 
 
-    constructor(geometry: TemplateGeometry, isDrawingEdges: boolean = false) {
+    constructor(geometry: TemplateGeometry, materialUrl: string, isDrawingEdges: boolean = false) {
         this._projection = mat4.create();
         this._viewMatrix = mat4.create();
         this._isDrawingEdges = isDrawingEdges;
         this.loadGeometry(geometry);
         this._isMaterialLoaded = false;
+        this._materialUrl = materialUrl;
     }
 
     public async OnStart(): Promise<void> {
         this._transform = this.owner?.transform;
         if (!this.material) {
-            const materials = await GLUtilities.loadMTL('../../../default.mtl');
+            const materials = await GLUtilities.loadMTL(this._materialUrl);
             if (materials) {
                 this.material = new Material(Engine._light, materials);
             } else {
@@ -58,10 +60,8 @@ export class Renderer implements ResizableComponent {
 
     public BeforeRemove(): void {
     }
-    public setColor(r: number, g: number, b: number, a: number): void{
-        if (this._isMaterialLoaded){ 
-            this.material?.setColor(r, g, b, a);
-        }
+    public setColor(r: number, g: number, b: number, a: number): void {
+        this.material?.setColor(r, g, b, a);
     }
     public OnResize(args: any): void {
         this._projection = args._projection;
@@ -71,9 +71,23 @@ export class Renderer implements ResizableComponent {
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
-    public loadTexture(url: string): void{
+    public loadTexture(url: string): void {
         this.material?.loadTexture(url, this.material?.getCurrentMaterialIndex());
     }
+
+    public toJson(): Promise<string> {
+        return new Promise<string>(async resolve => {
+            resolve(JSON.stringify({
+                name: this.name,
+                material: await this.material?.toJson(),
+                viewMatrix: this._viewMatrix,
+                projection: this._projection,
+                geometry: await this._geometry?.toJson(),
+                drawingEdges: this._isDrawingEdges,
+            }))
+        })
+    }
+
     private draw(): void {
         if (!this._transform) {
             console.error("[Transform] must be not null");
@@ -108,7 +122,7 @@ export class Renderer implements ResizableComponent {
         gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
 
         this._geometry.draw();
-        if (this._isDrawingEdges){
+        if (this._isDrawingEdges) {
             this.material.edgeUse();
             posLocation = this.material.getAttributePosition('pos', 'edge');
             if (posLocation == -1) {
@@ -122,6 +136,6 @@ export class Renderer implements ResizableComponent {
             gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
             this._geometry.drawEdges();
         }
-        
+
     }
 }

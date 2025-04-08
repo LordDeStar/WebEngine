@@ -3632,6 +3632,11 @@ class AnimationClip {
         this.target = target;
         this.updateFunc = update;
     }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return JSON.stringify(this.updateFunc);
+        });
+    }
     Update() {
         this.updateFunc(this.target);
     }
@@ -3665,6 +3670,25 @@ class Animator {
         }
     }
     BeforeRemove() {
+    }
+    // Исправленный метод toJson
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Ожидаем завершения всех асинхронных операций для клипов
+                const clipsJson = yield Promise.all(this.clips.map((clip) => __awaiter(this, void 0, void 0, function* () { return yield clip.toJson(); })));
+                // Сериализуем данные после завершения всех операций
+                return JSON.stringify({
+                    name: this.name,
+                    clips: clipsJson,
+                    currentIndex: this.currentIndex,
+                });
+            }
+            catch (error) {
+                console.error("Error during Animator serialization:", error);
+                throw error;
+            }
+        });
     }
 }
 
@@ -3703,7 +3727,7 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 class Renderer {
-    constructor(geometry, isDrawingEdges = false) {
+    constructor(geometry, materialUrl, isDrawingEdges = false) {
         this.name = "renderer";
         this.owner = null;
         this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
@@ -3711,13 +3735,14 @@ class Renderer {
         this._isDrawingEdges = isDrawingEdges;
         this.loadGeometry(geometry);
         this._isMaterialLoaded = false;
+        this._materialUrl = materialUrl;
     }
     OnStart() {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
             this._transform = (_a = this.owner) === null || _a === void 0 ? void 0 : _a.transform;
             if (!this.material) {
-                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.loadMTL('../../../default.mtl');
+                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.loadMTL(this._materialUrl);
                 if (materials) {
                     this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_1__.Material(_eng__WEBPACK_IMPORTED_MODULE_3__.Engine._light, materials);
                 }
@@ -3744,9 +3769,7 @@ class Renderer {
     }
     setColor(r, g, b, a) {
         var _a;
-        if (this._isMaterialLoaded) {
-            (_a = this.material) === null || _a === void 0 ? void 0 : _a.setColor(r, g, b, a);
-        }
+        (_a = this.material) === null || _a === void 0 ? void 0 : _a.setColor(r, g, b, a);
     }
     OnResize(args) {
         this._projection = args._projection;
@@ -3758,6 +3781,19 @@ class Renderer {
     loadTexture(url) {
         var _a, _b;
         (_a = this.material) === null || _a === void 0 ? void 0 : _a.loadTexture(url, (_b = this.material) === null || _b === void 0 ? void 0 : _b.getCurrentMaterialIndex());
+    }
+    toJson() {
+        return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            resolve(JSON.stringify({
+                name: this.name,
+                material: yield ((_a = this.material) === null || _a === void 0 ? void 0 : _a.toJson()),
+                viewMatrix: this._viewMatrix,
+                projection: this._projection,
+                geometry: yield ((_b = this._geometry) === null || _b === void 0 ? void 0 : _b.toJson()),
+                drawingEdges: this._isDrawingEdges,
+            }));
+        }));
     }
     draw() {
         if (!this._transform) {
@@ -3847,6 +3883,15 @@ class Script {
             this._data.beforeRemove(this.owner);
         ;
     }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                name: this.name,
+                params: this._params,
+                data: this._data
+            }));
+        });
+    }
     init() {
         if (this._data.init)
             this._params = this._data.init();
@@ -3875,7 +3920,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   Script: () => (/* reexport safe */ _components_Script__WEBPACK_IMPORTED_MODULE_0__.Script),
 /* harmony export */   Sphere: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Sphere),
 /* harmony export */   TemplateGeometry: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.TemplateGeometry),
-/* harmony export */   Transform: () => (/* reexport safe */ _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform)
+/* harmony export */   Transform: () => (/* reexport safe */ _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var _components_Script__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./components/Script */ "./public/engine/core/components/Script.ts");
 /* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
@@ -3908,9 +3954,11 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 class Engine {
-    constructor() {
+    constructor(width, height) {
         this._objects = [];
-        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init('main');
+        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init();
+        this._canvas.style.width = width;
+        this._canvas.style.height = height;
         Engine._light = this.createLight();
         this._viewMatrix = this.createViewMatrix();
     }
@@ -3920,15 +3968,21 @@ class Engine {
         return light;
     }
     resize() {
-        if (_gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.resizeCanvasToDisplaySize(this._canvas)) {
-            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
-            this._objects.forEach(i => {
-                let renderer = i.GetComponent("renderer");
-                if (renderer) {
-                    renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: this._viewMatrix });
-                }
-            });
+        // Синхронизируем физические размеры canvas с его отображаемыми размерами
+        const displayWidth = this._canvas.clientWidth;
+        const displayHeight = this._canvas.clientHeight;
+        if (this._canvas.width !== displayWidth || this._canvas.height !== displayHeight) {
+            this._canvas.width = displayWidth;
+            this._canvas.height = displayHeight;
         }
+        // Обновляем viewport и матрицу проекции
+        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+        this._objects.forEach(i => {
+            let renderer = i.GetComponent("renderer");
+            if (renderer) {
+                renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: this._viewMatrix });
+            }
+        });
     }
     createPerspectiveMatrix() {
         const fieldOfView = 45 * Math.PI / 180;
@@ -3970,8 +4024,61 @@ class Engine {
         });
         requestAnimationFrame(() => this.loop());
     }
+    fromJson(json) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const data = yield JSON.parse(json);
+                if (!Array.isArray(data.camera) || data.camera.length !== 16 || !data.camera.every((val) => typeof val === "number")) {
+                    throw new Error("Invalid camera matrix format in JSON");
+                }
+                const cameraMatrix = data.camera;
+                const objectList = Promise.all(data.objects.map((object) => __awaiter(this, void 0, void 0, function* () {
+                    yield _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject.fromJson(object);
+                })));
+                this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.fromValues(...cameraMatrix);
+                Engine._light = yield _gl_light__WEBPACK_IMPORTED_MODULE_3__.Light.fromJson(data.light);
+                console.log(data.objects);
+            }
+            catch (_a) {
+                console.error("Error deserialize engine");
+            }
+        });
+    }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Ожидаем завершения всех асинхронных операций для объектов
+                const objectsJson = yield Promise.all(this._objects.map((object) => __awaiter(this, void 0, void 0, function* () { return yield object.toJson(); })));
+                // Сериализуем данные после завершения всех операций
+                return JSON.stringify({
+                    camera: Array.from(this._viewMatrix),
+                    light: yield Engine._light.toJson(),
+                    objects: objectsJson
+                });
+            }
+            catch (error) {
+                console.error("Error during engine serialization:", error);
+                throw error;
+            }
+        });
+    }
 }
 
+const SDK = {
+    AnimationClip: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip,
+    Animator: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator,
+    Engine,
+    GameObject: _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject,
+    Material: _gl_material__WEBPACK_IMPORTED_MODULE_4__.Material,
+    Renderer: _components_Renderer__WEBPACK_IMPORTED_MODULE_5__.Renderer,
+    Transform: _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform,
+    Cube: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Cube,
+    Sphere: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Sphere,
+    TemplateGeometry: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.TemplateGeometry,
+    Script: _components_Script__WEBPACK_IMPORTED_MODULE_0__.Script,
+    GLUtilities: _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (SDK);
 
 
 /***/ }),
@@ -4146,6 +4253,36 @@ class Light {
     }
     setShininess(shininess) {
         this.shininess = shininess;
+    }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                position: Array.from(this.position),
+                direction: Array.from(this.direction),
+                ambient: Array.from(this.ambient),
+                diffuse: Array.from(this.diffuse),
+                specular: Array.from(this.specular),
+                shininess: this.shininess
+            }));
+        });
+    }
+    static fromJson(json) {
+        return new Promise(resolve => {
+            const light = new Light();
+            const obj = JSON.parse(json);
+            const pos = obj.position;
+            const dir = obj.direction;
+            const amb = obj.ambient;
+            const diff = obj.diffuse;
+            const spec = obj.specular;
+            light.position = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(...pos);
+            light.direction = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(...dir);
+            light.ambient = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(...amb);
+            light.diffuse = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(...diff);
+            light.specular = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(...spec);
+            light.shininess = obj.shininess;
+            resolve(light);
+        });
     }
 }
 
@@ -4342,6 +4479,46 @@ class Material {
     edgeUse() {
         this._edgeShader.use();
     }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Ожидаем завершения всех асинхронных операций для текстур
+                const texturesJson = yield Promise.all(this._textures.map((texture) => __awaiter(this, void 0, void 0, function* () { return yield texture.toJson(); })));
+                // Ожидаем завершения всех асинхронных операций для материалов
+                const materialsJson = yield Promise.all(this._materials.map((material) => __awaiter(this, void 0, void 0, function* () { return yield this.stringifyProperties(material); })));
+                // Сериализуем данные после завершения всех операций
+                return JSON.stringify({
+                    shader: yield this._shader.toJson(),
+                    edgeShader: yield this._edgeShader.toJson(),
+                    color: this._color,
+                    textures: texturesJson,
+                    materials: materialsJson,
+                    currentIndex: this._currentMaterialIndex
+                });
+            }
+            catch (error) {
+                console.error("Error during material serialization:", error);
+                throw error;
+            }
+        });
+    }
+    stringifyProperties(property) {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                name: property.name,
+                Ns: property.Ns,
+                Ka: property.Ka,
+                Kd: property.Kd,
+                Ks: property.Ks,
+                d: property.d,
+                illum: property.illum,
+                map_Kd: property.map_Kd,
+                map_Bump: property.map_Bump,
+                map_Ks: property.map_Ks
+            }));
+        });
+    }
+    ;
 }
 
 
@@ -4385,6 +4562,16 @@ class Shader {
         if (this._uniforms[name] === undefined)
             throw new Error(`Shader [${this._name}] has no uniform [${name}]`);
         return this._uniforms[`${name}`];
+    }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                name: this._name,
+                program: this._program,
+                attributes: this._attributes,
+                uniforms: this._uniforms
+            }));
+        });
     }
     loadShader(source, shaderType) {
         let shader = _gl__WEBPACK_IMPORTED_MODULE_0__.gl.createShader(shaderType);
@@ -4443,6 +4630,11 @@ __webpack_require__.r(__webpack_exports__);
 class Texture {
     constructor() {
         this._texture = null;
+    }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify(this._texture));
+        });
     }
     loadTexture(gl, url) {
         const texture = gl.createTexture();
@@ -4509,6 +4701,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   GameObject: () => (/* binding */ GameObject)
 /* harmony export */ });
 /* harmony import */ var _transform__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./transform */ "./public/engine/core/objects/transform.ts");
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 
 class GameObject {
     constructor(tag) {
@@ -4536,6 +4737,30 @@ class GameObject {
         else {
             console.error(`Component with name [${name}] is undefined`);
         }
+    }
+    static fromJson(json) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.parse(json);
+            const components = Promise.all(data.components.map((component) => __awaiter(this, void 0, void 0, function* () {
+                let comp = JSON.parse(component);
+                console.log(comp);
+            })));
+            const gameObject = new GameObject(data.tag);
+            gameObject.transform = yield _transform__WEBPACK_IMPORTED_MODULE_0__.Transform.fromJson(data.transform);
+            return gameObject;
+        });
+    }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Ожидаем завершения всех асинхронных операций для компонентов
+            const componentsJson = yield Promise.all(this.components.map((component) => __awaiter(this, void 0, void 0, function* () { return yield component.toJson(); })));
+            // Сериализуем объект после завершения всех операций
+            return JSON.stringify({
+                tag: this.tag,
+                transform: yield this.transform.toJson(),
+                components: componentsJson
+            });
+        });
     }
 }
 
@@ -4818,6 +5043,18 @@ class Geometry {
     drawEdges() {
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.drawElements(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.LINES, this._edgeCount, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_SHORT, 0);
     }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                vertexBuffer: this._vertexBuffer,
+                texCoordsBuffer: this._texCoordBuffer,
+                indexBuffer: this._indexBuffer,
+                edgeIndexBuffer: this._edgeIndexBuffer,
+                vertexCount: this._vertexCount,
+                edgeCount: this._edgeCount
+            }));
+        });
+    }
 }
 
 
@@ -4853,6 +5090,25 @@ class Transform {
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.multiply(mvpMatrix, projection, view);
         gl_matrix__WEBPACK_IMPORTED_MODULE_1__.multiply(mvpMatrix, mvpMatrix, modelMatrix);
         return mvpMatrix;
+    }
+    toJson() {
+        return new Promise(resolve => {
+            resolve(JSON.stringify({
+                scale: [...this.scale.values()],
+                position: [...this.position.values()],
+                rotation: [...this.rotation.values()]
+            }));
+        });
+    }
+    static fromJson(json) {
+        return new Promise(resolve => {
+            const transform = new Transform();
+            const object = JSON.parse(json);
+            transform.scale = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(object.scale[0], object.scale[1], object.scale[2]);
+            transform.position = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(object.position[0], object.position[1], object.position[2]);
+            transform.rotation = gl_matrix__WEBPACK_IMPORTED_MODULE_0__.fromValues(object.rotation[0], object.rotation[1], object.rotation[2]);
+            resolve(transform);
+        });
     }
 }
 
@@ -4932,7 +5188,8 @@ class Transform {
 /******/ var __webpack_exports__Sphere = __webpack_exports__.Sphere;
 /******/ var __webpack_exports__TemplateGeometry = __webpack_exports__.TemplateGeometry;
 /******/ var __webpack_exports__Transform = __webpack_exports__.Transform;
-/******/ export { __webpack_exports__AnimationClip as AnimationClip, __webpack_exports__Animator as Animator, __webpack_exports__Cube as Cube, __webpack_exports__Engine as Engine, __webpack_exports__GLUtilities as GLUtilities, __webpack_exports__GameObject as GameObject, __webpack_exports__Material as Material, __webpack_exports__Renderer as Renderer, __webpack_exports__Script as Script, __webpack_exports__Sphere as Sphere, __webpack_exports__TemplateGeometry as TemplateGeometry, __webpack_exports__Transform as Transform };
+/******/ var __webpack_exports__default = __webpack_exports__["default"];
+/******/ export { __webpack_exports__AnimationClip as AnimationClip, __webpack_exports__Animator as Animator, __webpack_exports__Cube as Cube, __webpack_exports__Engine as Engine, __webpack_exports__GLUtilities as GLUtilities, __webpack_exports__GameObject as GameObject, __webpack_exports__Material as Material, __webpack_exports__Renderer as Renderer, __webpack_exports__Script as Script, __webpack_exports__Sphere as Sphere, __webpack_exports__TemplateGeometry as TemplateGeometry, __webpack_exports__Transform as Transform, __webpack_exports__default as default };
 /******/ 
 
 //# sourceMappingURL=engine.js.map

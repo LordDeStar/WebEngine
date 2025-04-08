@@ -40,7 +40,6 @@ export class Material {
       }
     });
   }
-
   public setCurrentMaterial(index: number): void {
     if (index >= 0 && index < this._materials.length) {
       this._currentMaterialIndex = index;
@@ -48,11 +47,10 @@ export class Material {
       console.warn(`Индекс материала ${index} вне диапазона.`);
     }
   }
-
   public getCurrentMaterial(): MaterialProperties {
     return this._materials[this._currentMaterialIndex];
   }
-  public getCurrentMaterialIndex(): number{
+  public getCurrentMaterialIndex(): number {
     return this._currentMaterialIndex;
   }
   public loadTexture(url: string, index: number): void {
@@ -65,7 +63,6 @@ export class Material {
       console.warn(`Индекс материала ${index} вне диапазона.`);
     }
   }
-
   private loadEdgeShader(): Shader {
     const vertex = `
       attribute vec3 pos;
@@ -83,7 +80,6 @@ export class Material {
 
     return new Shader('edge', vertex, fragment);
   }
-
   private loadShader(): Shader {
     const vertex = `
       attribute vec3 pos;
@@ -137,19 +133,15 @@ export class Material {
 
     return new Shader('basic', vertex, fragment);
   }
-
   public setColor(red: number, green: number, blue: number, alpha: number): void {
     this._color = vec4.fromValues(red, green, blue, alpha);
   }
-
   public getAttributePosition(attr: string, shaderName: string): number {
     return (shaderName !== 'edge') ? this._shader.getAttributeLocation(attr) : this._edgeShader.getAttributeLocation(attr);
   }
-
   public getUniformPosition(uniform: string, shaderName: string): WebGLUniformLocation {
     return (shaderName !== 'edge') ? this._shader.getUniformLocation(uniform) : this._edgeShader.getUniformLocation(uniform);
   }
-
   public async loadFromMLT(url: string): Promise<void> {
     const materials = await GLUtilities.loadMTL(url);
     this._materials = materials;
@@ -162,7 +154,6 @@ export class Material {
       }
     });
   }
-
   public basicUse(): void {
     this._shader.use();
 
@@ -188,7 +179,7 @@ export class Material {
 
     loc = this._shader.getUniformLocation('uColor');
     gl.uniform4fv(loc, this._color);
-    
+
     const texture = this._textures[this._currentMaterialIndex];
     loc = this._shader.getUniformLocation('hasTexture');
     gl.uniform1i(loc, texture && texture.isLoaded() ? 1 : 0);
@@ -199,8 +190,49 @@ export class Material {
       gl.uniform1i(loc, 0);
     }
   }
-
   public edgeUse(): void {
     this._edgeShader.use();
   }
+  public async toJson(): Promise<string> {
+    try {
+      // Ожидаем завершения всех асинхронных операций для текстур
+      const texturesJson = await Promise.all(
+        this._textures.map(async (texture) => await texture.toJson())
+      );
+
+      // Ожидаем завершения всех асинхронных операций для материалов
+      const materialsJson = await Promise.all(
+        this._materials.map(async (material) => await this.stringifyProperties(material))
+      );
+
+      // Сериализуем данные после завершения всех операций
+      return JSON.stringify({
+        shader: await this._shader.toJson(),
+        edgeShader: await this._edgeShader.toJson(),
+        color: this._color,
+        textures: texturesJson,
+        materials: materialsJson,
+        currentIndex: this._currentMaterialIndex
+      });
+    } catch (error) {
+      console.error("Error during material serialization:", error);
+      throw error;
+    }
+  }
+  private stringifyProperties(property: MaterialProperties): Promise<string> {
+    return new Promise<string>(resolve => {
+      resolve(JSON.stringify({
+        name: property.name,
+        Ns: property.Ns,
+        Ka: property.Ka,
+        Kd: property.Kd,
+        Ks: property.Ks,
+        d: property.d,
+        illum: property.illum,
+        map_Kd: property.map_Kd,
+        map_Bump: property.map_Bump,
+        map_Ks: property.map_Ks
+      }));
+    });
+  };
 }

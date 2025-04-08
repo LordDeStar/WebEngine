@@ -5,6 +5,7 @@ export interface Component {
     OnStart(): Promise<void>;
     OnUpdate(): void;
     BeforeRemove(): void;
+    toJson(): Promise<string>;
 }
 
 

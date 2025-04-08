@@ -5,6 +5,11 @@ export class Texture {
     this._texture = null;
   }
 
+  public toJson(): Promise<string> {
+    return new Promise<string>(resolve => {
+      resolve(JSON.stringify(this._texture));
+    });
+  }
   public loadTexture(gl: WebGLRenderingContext, url: string): void {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -41,7 +46,6 @@ export class Texture {
     };
     image.src = url;
   }
-
   public bind(gl: WebGLRenderingContext, unit: number): void {
     if (this._texture) {
       gl.activeTexture(gl.TEXTURE0 + unit);
@@ -51,11 +55,9 @@ export class Texture {
       console.error(`Texture not loaded`);
     }
   }
-
   public isLoaded(): boolean {
     return this._texture !== null;
   }
-
   private isPowerOf2(value: number): boolean {
     return (value & (value - 1)) == 0;
   }

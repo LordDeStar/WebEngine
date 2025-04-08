@@ -14,25 +14,30 @@ export class Shader {
         this.detectAttributes();
         this.detectUniforms();
     }
-
     public get name(): string {
         return this._name;
     }
-
     public use(): void {
         gl.useProgram(this._program);
     }
-
     public getAttributeLocation(name: string): number {
         if (this._attributes[name] === undefined) throw new Error(`Shader [${this._name}] has no attribute [${name}]`);
         return this._attributes[`${name}`];
     }
-
     public getUniformLocation(name: string): WebGLUniformLocation {
         if (this._uniforms[name] === undefined) throw new Error(`Shader [${this._name}] has no uniform [${name}]`);
         return this._uniforms[`${name}`];
     }
-
+    public toJson(): Promise<string> {
+        return new Promise<string>(resolve => {
+            resolve(JSON.stringify({
+                name: this._name,
+                program: this._program,
+                attributes: this._attributes,
+                uniforms: this._uniforms
+            }));
+        });
+    }
     private loadShader(source: string, shaderType: number): WebGLShader {
         let shader: WebGLShader = <WebGLShader>gl.createShader(shaderType);
 
@@ -45,7 +50,6 @@ export class Shader {
 
         return shader;
     }
-
     private createProgram(vertex: WebGLShader, fragment: WebGLShader): WebGLProgram {
         let program = <WebGLProgram>gl.createProgram();
         gl.attachShader(program, vertex);
@@ -59,7 +63,6 @@ export class Shader {
 
         return program;
     }
-
     private detectAttributes(): void {
         let count = gl.getProgramParameter(this._program, gl.ACTIVE_ATTRIBUTES);
         for (let i = 0; i < count; i++) {
@@ -68,7 +71,6 @@ export class Shader {
             this._attributes[attrInfo.name] = gl.getAttribLocation(this._program, attrInfo.name);
         }
     }
-
     private detectUniforms(): void {
         let count = gl.getProgramParameter(this._program, gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < count; i++) {
@@ -77,4 +79,5 @@ export class Shader {
             this._uniforms[info.name] = <WebGLUniformLocation>gl.getUniformLocation(this._program, info.name);
         }
     }
+
 }

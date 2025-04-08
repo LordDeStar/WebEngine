@@ -36,4 +36,37 @@ export class GameObject {
     }
 
 
+    public static async fromJson(json: string): Promise<GameObject> {
+
+        const data = JSON.parse(json);
+        const components = Promise.all(
+            data.components.map(async (component: string) => {
+                let comp = JSON.parse(component);
+                switch (comp.name) {
+                    case 'renderer':
+                        return
+                }
+            })
+        );
+        const gameObject = new GameObject(data.tag);
+
+
+
+        gameObject.transform = await Transform.fromJson(data.transform);
+        return gameObject;
+    }
+    public async toJson(): Promise<string> {
+        // Ожидаем завершения всех асинхронных операций для компонентов
+        const componentsJson = await Promise.all(
+            this.components.map(async (component) => await component.toJson())
+        );
+
+        // Сериализуем объект после завершения всех операций
+        return JSON.stringify({
+            tag: this.tag,
+            transform: await this.transform.toJson(),
+            components: componentsJson
+        });
+    }
+
 }
