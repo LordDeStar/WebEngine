@@ -20,7 +20,7 @@ export interface MaterialProperties {
 export class Material {
   private _shader: Shader;
   private _edgeShader: Shader;
-  private _color: vec4;
+  public _color: vec4;
   private _light: Light;
   private _textures: Texture[] = [];
   private _materials: MaterialProperties[] = [];
@@ -53,11 +53,10 @@ export class Material {
   public getCurrentMaterialIndex(): number {
     return this._currentMaterialIndex;
   }
-  public loadTexture(url: string, index: number): void {
-    console.log(this._textures)
+  public async loadTexture(url: string, index: number): Promise<void> {
     if (index >= 0 && index < this._materials.length) {
       const texture = new Texture();
-      texture.loadTexture(gl, url);
+      await texture.loadTexture(gl, url);
       this._textures[index] = texture;
     } else {
       console.warn(`Индекс материала ${index} вне диапазона.`);
@@ -209,7 +208,7 @@ export class Material {
       return JSON.stringify({
         shader: await this._shader.toJson(),
         edgeShader: await this._edgeShader.toJson(),
-        color: this._color,
+        color: Array.from(this._color),
         textures: texturesJson,
         materials: materialsJson,
         currentIndex: this._currentMaterialIndex

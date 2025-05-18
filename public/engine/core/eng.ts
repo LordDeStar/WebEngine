@@ -9,18 +9,42 @@ import { Renderer } from "./components/Renderer";
 import { Transform } from "./objects/transform";
 import { Cube, Sphere, TemplateGeometry } from "./objects/geometries";
 import { AnimationClip, Animator } from "./components/Animator";
+import { Camera } from './components/Camera';
 class Engine {
-  private _canvas: HTMLCanvasElement;
-  private _viewMatrix: mat4;
+  private _canvas: HTMLCanvasElement | undefined;
+  public static viewMatrix: mat4 | undefined;
   public static _light: Light;
   private _objects: GameObject[] = [];
+  public isInited: boolean
+  public static mousePosition: vec3;
   constructor(width: string, height: string) {
-    this._canvas = GLUtilities.init();
-    this._canvas.style.width = width;
-    this._canvas.style.height = height;
-    Engine._light = this.createLight();
-    this._viewMatrix = this.createViewMatrix();
+    this.isInited = false
   }
+
+  public init(id: string): void {
+    this._canvas = GLUtilities.init(id);
+
+    Engine._light = this.createLight();
+    Engine.viewMatrix = Engine.createViewMatrix();
+    this._canvas.addEventListener('mousemove', (e: MouseEvent) => {
+      Engine.mousePosition = 
+    })
+    this.isInited = true;
+  }
+
+  private getMousePos(event: MouseEvent): vec3 {
+    const rect = this._canvas?.getBoundingClientRect();
+    const scaleX = this._canvas.width / rect.width;    // Соотношение ширины канваса и его CSS-размера
+    const scaleY = this.canvas.height / rect.height;  // Соотношение высоты канваса и его CSS-размера
+
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (this.canvas.height - (event.clientY - rect.top) * scaleY); // Инвертируем Y-координату
+    const z = 0; // Предполагаем, что Z-координата равна 0 (плоскость экрана)
+
+    return vec3.fromValues(x, y, z);
+  }
+
+
   private createLight(): Light {
     const light = new Light();
     light.setDirection(0.0, 1.0, 0.0);
@@ -28,9 +52,12 @@ class Engine {
   }
 
   public resize(): void {
+    if (!this._canvas) {
+      return;
+    }
     // Синхронизируем физические размеры canvas с его отображаемыми размерами
-    const displayWidth = this._canvas.clientWidth;
-    const displayHeight = this._canvas.clientHeight;
+    const displayWidth = this._canvas?.clientWidth;
+    const displayHeight = this._canvas?.clientHeight;
 
     if (this._canvas.width !== displayWidth || this._canvas.height !== displayHeight) {
       this._canvas.width = displayWidth;
@@ -40,24 +67,27 @@ class Engine {
     // Обновляем viewport и матрицу проекции
     gl.viewport(0, 0, this._canvas.width, this._canvas.height);
     this._objects.forEach(i => {
-      let renderer = <ResizableComponent>i.GetComponent("renderer");
+      let renderer = <ResizableComponent | undefined>i.GetComponent("renderer");
       if (renderer) {
-        renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: this._viewMatrix });
+        renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
       }
     });
   }
 
   private createPerspectiveMatrix(): mat4 {
+    const projectionMatrix = mat4.create();
+    if (!this._canvas) {
+      return projectionMatrix;
+    }
     const fieldOfView = 45 * Math.PI / 180;
     const aspect = this._canvas.clientWidth / this._canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100.0;
-    const projectionMatrix = mat4.create();
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
     return projectionMatrix;
   }
 
-  private createViewMatrix(): mat4 {
+  public static createViewMatrix(): mat4 {
     const viewMatrix = mat4.create();
     const eye = vec3.fromValues(0, 0, 3);
     const center = vec3.fromValues(0, 0, 5);
@@ -69,7 +99,7 @@ class Engine {
   public async start(): Promise<void> {
     gl.clearColor(0, 0, 0, 1);
     gl.enable(gl.DEPTH_TEST);
-    this.resize();
+
     window.addEventListener('resize', () => this.resize());
 
     await Promise.all(
@@ -81,6 +111,8 @@ class Engine {
         }))
       )
     );
+
+    this.resize();
 
     this.loop();
   }
@@ -96,51 +128,10 @@ class Engine {
     requestAnimationFrame(() => this.loop());
   }
 
-  public async fromJson(json: string): Promise<void> {
-    try {
-      const data = await JSON.parse(json);
-      if (!Array.isArray(data.camera) || data.camera.length !== 16 || !data.camera.every((val: any) => typeof val === "number")) {
-        throw new Error("Invalid camera matrix format in JSON");
-      }
-      const cameraMatrix = data.camera as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
-
-
-      const objectList = Promise.all(
-        data.objects.map(async (object: string) => {
-          await GameObject.fromJson(object);
-        })
-      );
-
-      this._viewMatrix = mat4.fromValues(...cameraMatrix);
-      Engine._light = await Light.fromJson(data.light);
-      console.log(data.objects);
-    }
-    catch {
-      console.error("Error deserialize engine")
-    }
-  }
-
-  public async toJson(): Promise<string> {
-    try {
-      // Ожидаем завершения всех асинхронных операций для объектов
-      const objectsJson = await Promise.all(
-        this._objects.map(async (object) => await object.toJson())
-      );
-
-      // Сериализуем данные после завершения всех операций
-      return JSON.stringify({
-        camera: Array.from(this._viewMatrix),
-        light: await Engine._light.toJson(),
-        objects: objectsJson
-      });
-    } catch (error) {
-      console.error("Error during engine serialization:", error);
-      throw error;
-    }
-  }
 }
 
 export {
+  Camera,
   AnimationClip,
   Animator,
   Engine,
@@ -156,6 +147,7 @@ export {
 }
 
 const SDK = {
+  Camera,
   AnimationClip,
   Animator,
   Engine,

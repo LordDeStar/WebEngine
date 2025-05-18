@@ -5,10 +5,14 @@ export class GLUtilities {
     public static init(elementId?: string): HTMLCanvasElement {
         let canvas: HTMLCanvasElement;
         if (elementId) {
-            canvas = <HTMLCanvasElement>document.getElementById(elementId);
-            if (canvas === undefined) {
-                throw new Error(`Cannot find a canvas with id=[${elementId}]`)
+            const element = <HTMLElement>document.getElementById(elementId);
+            if (element === undefined) {
+                throw new Error(`Cannot find a element with id=[${elementId}]`)
             }
+            canvas = <HTMLCanvasElement>document.createElement('canvas');
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            element.appendChild(canvas);
         }
         else {
             canvas = <HTMLCanvasElement>document.createElement('canvas');

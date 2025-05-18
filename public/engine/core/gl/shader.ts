@@ -5,9 +5,12 @@ export class Shader {
     private _program: WebGLProgram;
     private _attributes: { [name: string]: number } = {};
     private _uniforms: { [name: string]: WebGLUniformLocation } = {};
-
+    private _vertexSrc: string;
+    private _fragmentSrc: string;
     public constructor(name: string, vertexSrc: string, fragmentSrc: string) {
         this._name = name;
+        this._vertexSrc = vertexSrc;
+        this._fragmentSrc = fragmentSrc;
         let vertex = this.loadShader(vertexSrc, gl.VERTEX_SHADER);
         let fragment = this.loadShader(fragmentSrc, gl.FRAGMENT_SHADER);
         this._program = this.createProgram(vertex, fragment);
@@ -28,16 +31,32 @@ export class Shader {
         if (this._uniforms[name] === undefined) throw new Error(`Shader [${this._name}] has no uniform [${name}]`);
         return this._uniforms[`${name}`];
     }
-    public toJson(): Promise<string> {
-        return new Promise<string>(resolve => {
-            resolve(JSON.stringify({
-                name: this._name,
-                program: this._program,
-                attributes: this._attributes,
-                uniforms: this._uniforms
-            }));
+    public toJson(): string {
+        return JSON.stringify({
+            name: this._name,
+            vertexSrc: this._vertexSrc,
+            fragmentSrc: this._fragmentSrc,
+            attributes: Object.keys(this._attributes),
+            uniforms: Object.keys(this._uniforms)
         });
     }
+    public static fromJson(json: string): Shader {
+        const data = JSON.parse(json);
+        const shader = new Shader(data.name, data.vertexSrc, data.fragmentSrc);
+        data.attributes.forEach((attr: string) => {
+            if (!shader._attributes[attr]) {
+                throw new Error(`Attribute [${attr}] not found in restored shader [${data.name}]`);
+            }
+        });
+
+        data.uniforms.forEach((uniform: string) => {
+            if (!shader._uniforms[uniform]) {
+                throw new Error(`Uniform [${uniform}] not found in restored shader [${data.name}]`);
+            }
+        });
+        return shader;
+    }
+
     private loadShader(source: string, shaderType: number): WebGLShader {
         let shader: WebGLShader = <WebGLShader>gl.createShader(shaderType);
 

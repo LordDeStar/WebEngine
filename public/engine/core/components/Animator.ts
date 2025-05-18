@@ -9,7 +9,7 @@ export class AnimationClip {
     }
 
     public async toJson(): Promise<string> {
-        return JSON.stringify(this.updateFunc);
+        return this.updateFunc.toString();
     }
     public Update(): void {
         this.updateFunc(this.target);

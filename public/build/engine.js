@@ -3634,7 +3634,7 @@ class AnimationClip {
     }
     toJson() {
         return __awaiter(this, void 0, void 0, function* () {
-            return JSON.stringify(this.updateFunc);
+            return this.updateFunc.toString();
         });
     }
     Update() {
@@ -3695,6 +3695,74 @@ class Animator {
 
 /***/ }),
 
+/***/ "./public/engine/core/components/Camera.ts":
+/*!*************************************************!*\
+  !*** ./public/engine/core/components/Camera.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Camera: () => (/* binding */ Camera)
+/* harmony export */ });
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
+/* harmony import */ var _eng__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../eng */ "./public/engine/core/eng.ts");
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+class Camera {
+    constructor() {
+        this.owner = null;
+        this.isGameStart = false;
+        this.name = "camera";
+        this.viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
+        this.eye = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 0, 3);
+        this.center = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 0, 5);
+        this.up = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 1, 0);
+    }
+    lookAt(x, y) {
+        this.center = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(x, y, this.eye[3] + 5);
+    }
+    updateMatrix() {
+        if (this.owner) {
+            this.eye = this.owner.transform.position;
+        }
+        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.lookAt(this.viewMatrix, this.eye, this.center, this.up);
+    }
+    OnStart() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.updateMatrix();
+            if (this.isGameStart)
+                _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.viewMatrix = this.viewMatrix;
+        });
+    }
+    OnUpdate() {
+        this.updateMatrix();
+        if (this.isGameStart)
+            _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.viewMatrix = this.viewMatrix;
+    }
+    BeforeRemove() {
+        _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.viewMatrix = _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.createViewMatrix();
+    }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return '';
+        });
+    }
+}
+
+
+/***/ }),
+
 /***/ "./public/engine/core/components/Renderer.ts":
 /*!***************************************************!*\
   !*** ./public/engine/core/components/Renderer.ts ***!
@@ -3705,12 +3773,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Renderer: () => (/* binding */ Renderer)
 /* harmony export */ });
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
-/* harmony import */ var _objects_geometry__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./../objects/geometry */ "./public/engine/core/objects/geometry.ts");
-/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../gl/material */ "./public/engine/core/gl/material.ts");
-/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../gl/gl */ "./public/engine/core/gl/gl.ts");
-/* harmony import */ var _eng__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../eng */ "./public/engine/core/eng.ts");
+/* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../objects/geometries */ "./public/engine/core/objects/geometries.ts");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
+/* harmony import */ var _objects_geometry__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./../objects/geometry */ "./public/engine/core/objects/geometry.ts");
+/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../gl/material */ "./public/engine/core/gl/material.ts");
+/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../gl/gl */ "./public/engine/core/gl/gl.ts");
+/* harmony import */ var _eng__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../eng */ "./public/engine/core/eng.ts");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -3726,39 +3795,42 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+
 class Renderer {
     constructor(geometry, materialUrl, isDrawingEdges = false) {
         this.name = "renderer";
         this.owner = null;
-        this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
-        this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_4__.create();
+        this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_5__.create();
+        this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_5__.create();
         this._isDrawingEdges = isDrawingEdges;
         this.loadGeometry(geometry);
         this._isMaterialLoaded = false;
         this._materialUrl = materialUrl;
+        this.color = [0, 0, 0, 0];
     }
     OnStart() {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
             this._transform = (_a = this.owner) === null || _a === void 0 ? void 0 : _a.transform;
             if (!this.material) {
-                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.loadMTL(this._materialUrl);
+                const materials = yield _gl_gl__WEBPACK_IMPORTED_MODULE_3__.GLUtilities.loadMTL(this._materialUrl);
                 if (materials) {
-                    this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_1__.Material(_eng__WEBPACK_IMPORTED_MODULE_3__.Engine._light, materials);
+                    this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_2__.Material(_eng__WEBPACK_IMPORTED_MODULE_4__.Engine._light, materials);
                 }
                 else {
-                    this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_1__.Material(_eng__WEBPACK_IMPORTED_MODULE_3__.Engine._light, [{
+                    this.material = new _gl_material__WEBPACK_IMPORTED_MODULE_2__.Material(_eng__WEBPACK_IMPORTED_MODULE_4__.Engine._light, [{
                             name: 'default',
                             Ns: 0,
-                            Ka: gl_matrix__WEBPACK_IMPORTED_MODULE_5__.fromValues(0, 0, 0, 1),
-                            Kd: gl_matrix__WEBPACK_IMPORTED_MODULE_5__.fromValues(1, 1, 1, 1),
-                            Ks: gl_matrix__WEBPACK_IMPORTED_MODULE_5__.fromValues(0, 0, 0, 1),
+                            Ka: gl_matrix__WEBPACK_IMPORTED_MODULE_6__.fromValues(0, 0, 0, 1),
+                            Kd: gl_matrix__WEBPACK_IMPORTED_MODULE_6__.fromValues(1, 1, 1, 1),
+                            Ks: gl_matrix__WEBPACK_IMPORTED_MODULE_6__.fromValues(0, 0, 0, 1),
                             d: 1,
                             illum: 0
                         }]);
                 }
                 this.material.setCurrentMaterial(0);
                 this._isMaterialLoaded = true;
+                this.color = [this.material._color[0], this.material._color[1], this.material._color[2], this.material._color[3]];
             }
         });
     }
@@ -3775,12 +3847,20 @@ class Renderer {
         this._projection = args._projection;
         this._viewMatrix = args._viewMatrix;
     }
+    loadFromUrl(url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const geometry = yield _objects_geometries__WEBPACK_IMPORTED_MODULE_0__.TemplateGeometry.loadFromOBJ(url);
+            this.loadGeometry(geometry);
+        });
+    }
     loadGeometry(template) {
-        this._geometry = _objects_geometry__WEBPACK_IMPORTED_MODULE_0__.Geometry.loadFromClass(template);
+        this._geometry = _objects_geometry__WEBPACK_IMPORTED_MODULE_1__.Geometry.loadFromClass(template);
     }
     loadTexture(url) {
-        var _a, _b;
-        (_a = this.material) === null || _a === void 0 ? void 0 : _a.loadTexture(url, (_b = this.material) === null || _b === void 0 ? void 0 : _b.getCurrentMaterialIndex());
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            yield ((_a = this.material) === null || _a === void 0 ? void 0 : _a.loadTexture(url, (_b = this.material) === null || _b === void 0 ? void 0 : _b.getCurrentMaterialIndex()));
+        });
     }
     toJson() {
         return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
@@ -3788,8 +3868,8 @@ class Renderer {
             resolve(JSON.stringify({
                 name: this.name,
                 material: yield ((_a = this.material) === null || _a === void 0 ? void 0 : _a.toJson()),
-                viewMatrix: this._viewMatrix,
-                projection: this._projection,
+                viewMatrix: Array.from(this._viewMatrix),
+                projection: Array.from(this._projection),
                 geometry: yield ((_b = this._geometry) === null || _b === void 0 ? void 0 : _b.toJson()),
                 drawingEdges: this._isDrawingEdges,
             }));
@@ -3822,7 +3902,7 @@ class Renderer {
         this._geometry.bindBuffers();
         const mvpMatrix = this._transform.getMvpMatrix(this._projection, this._viewMatrix);
         let loc = this.material.getUniformPosition('matrix', 'basic');
-        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+        _gl_gl__WEBPACK_IMPORTED_MODULE_3__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
         this._geometry.draw();
         if (this._isDrawingEdges) {
             this.material.edgeUse();
@@ -3833,7 +3913,7 @@ class Renderer {
             }
             this._geometry.bindEdgeBuffers();
             loc = this.material.getUniformPosition('matrix', 'edge');
-            _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
+            _gl_gl__WEBPACK_IMPORTED_MODULE_3__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
             this._geometry.drawEdges();
         }
     }
@@ -3911,6 +3991,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   AnimationClip: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip),
 /* harmony export */   Animator: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator),
+/* harmony export */   Camera: () => (/* reexport safe */ _components_Camera__WEBPACK_IMPORTED_MODULE_9__.Camera),
 /* harmony export */   Cube: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Cube),
 /* harmony export */   Engine: () => (/* binding */ Engine),
 /* harmony export */   GLUtilities: () => (/* reexport safe */ _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities),
@@ -3926,14 +4007,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _components_Script__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./components/Script */ "./public/engine/core/components/Script.ts");
 /* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
 /* harmony import */ var _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./objects/GameObject */ "./public/engine/core/objects/GameObject.ts");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
 /* harmony import */ var _gl_light__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gl/light */ "./public/engine/core/gl/light.ts");
 /* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./gl/material */ "./public/engine/core/gl/material.ts");
 /* harmony import */ var _components_Renderer__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/Renderer */ "./public/engine/core/components/Renderer.ts");
 /* harmony import */ var _objects_transform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./objects/transform */ "./public/engine/core/objects/transform.ts");
 /* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./objects/geometries */ "./public/engine/core/objects/geometries.ts");
 /* harmony import */ var _components_Animator__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./components/Animator */ "./public/engine/core/components/Animator.ts");
+/* harmony import */ var _components_Camera__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./components/Camera */ "./public/engine/core/components/Camera.ts");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -3953,14 +4035,17 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+
 class Engine {
     constructor(width, height) {
         this._objects = [];
-        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init();
-        this._canvas.style.width = width;
-        this._canvas.style.height = height;
+        this.isInited = false;
+    }
+    init(id) {
+        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init(id);
         Engine._light = this.createLight();
-        this._viewMatrix = this.createViewMatrix();
+        Engine.viewMatrix = Engine.createViewMatrix();
+        this.isInited = true;
     }
     createLight() {
         const light = new _gl_light__WEBPACK_IMPORTED_MODULE_3__.Light();
@@ -3968,9 +4053,13 @@ class Engine {
         return light;
     }
     resize() {
+        var _a, _b;
+        if (!this._canvas) {
+            return;
+        }
         // Синхронизируем физические размеры canvas с его отображаемыми размерами
-        const displayWidth = this._canvas.clientWidth;
-        const displayHeight = this._canvas.clientHeight;
+        const displayWidth = (_a = this._canvas) === null || _a === void 0 ? void 0 : _a.clientWidth;
+        const displayHeight = (_b = this._canvas) === null || _b === void 0 ? void 0 : _b.clientHeight;
         if (this._canvas.width !== displayWidth || this._canvas.height !== displayHeight) {
             this._canvas.width = displayWidth;
             this._canvas.height = displayHeight;
@@ -3980,38 +4069,41 @@ class Engine {
         this._objects.forEach(i => {
             let renderer = i.GetComponent("renderer");
             if (renderer) {
-                renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: this._viewMatrix });
+                renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
             }
         });
     }
     createPerspectiveMatrix() {
+        const projectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.create();
+        if (!this._canvas) {
+            return projectionMatrix;
+        }
         const fieldOfView = 45 * Math.PI / 180;
         const aspect = this._canvas.clientWidth / this._canvas.clientHeight;
         const zNear = 0.1;
         const zFar = 100.0;
-        const projectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.create();
-        gl_matrix__WEBPACK_IMPORTED_MODULE_9__.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_10__.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
         return projectionMatrix;
     }
-    createViewMatrix() {
-        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.create();
-        const eye = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 0, 3);
-        const center = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 0, 5);
-        const up = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.fromValues(0, 1, 0);
-        gl_matrix__WEBPACK_IMPORTED_MODULE_9__.lookAt(viewMatrix, eye, center, up);
+    static createViewMatrix() {
+        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.create();
+        const eye = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 0, 3);
+        const center = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 0, 5);
+        const up = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 1, 0);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_10__.lookAt(viewMatrix, eye, center, up);
         return viewMatrix;
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clearColor(0, 0, 0, 1);
             _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_TEST);
-            this.resize();
             window.addEventListener('resize', () => this.resize());
             yield Promise.all(this._objects.map(obj => Promise.all(obj.components.map((component) => __awaiter(this, void 0, void 0, function* () {
                 if (typeof component.OnStart === 'function') {
                     yield component.OnStart();
                 }
             })))));
+            this.resize();
             this.loop();
         });
     }
@@ -4024,47 +4116,10 @@ class Engine {
         });
         requestAnimationFrame(() => this.loop());
     }
-    fromJson(json) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                const data = yield JSON.parse(json);
-                if (!Array.isArray(data.camera) || data.camera.length !== 16 || !data.camera.every((val) => typeof val === "number")) {
-                    throw new Error("Invalid camera matrix format in JSON");
-                }
-                const cameraMatrix = data.camera;
-                const objectList = Promise.all(data.objects.map((object) => __awaiter(this, void 0, void 0, function* () {
-                    yield _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject.fromJson(object);
-                })));
-                this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_9__.fromValues(...cameraMatrix);
-                Engine._light = yield _gl_light__WEBPACK_IMPORTED_MODULE_3__.Light.fromJson(data.light);
-                console.log(data.objects);
-            }
-            catch (_a) {
-                console.error("Error deserialize engine");
-            }
-        });
-    }
-    toJson() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                // Ожидаем завершения всех асинхронных операций для объектов
-                const objectsJson = yield Promise.all(this._objects.map((object) => __awaiter(this, void 0, void 0, function* () { return yield object.toJson(); })));
-                // Сериализуем данные после завершения всех операций
-                return JSON.stringify({
-                    camera: Array.from(this._viewMatrix),
-                    light: yield Engine._light.toJson(),
-                    objects: objectsJson
-                });
-            }
-            catch (error) {
-                console.error("Error during engine serialization:", error);
-                throw error;
-            }
-        });
-    }
 }
 
 const SDK = {
+    Camera: _components_Camera__WEBPACK_IMPORTED_MODULE_9__.Camera,
     AnimationClip: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip,
     Animator: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator,
     Engine,
@@ -4110,10 +4165,14 @@ class GLUtilities {
     static init(elementId) {
         let canvas;
         if (elementId) {
-            canvas = document.getElementById(elementId);
-            if (canvas === undefined) {
-                throw new Error(`Cannot find a canvas with id=[${elementId}]`);
+            const element = document.getElementById(elementId);
+            if (element === undefined) {
+                throw new Error(`Cannot find a element with id=[${elementId}]`);
             }
+            canvas = document.createElement('canvas');
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            element.appendChild(canvas);
         }
         else {
             canvas = document.createElement('canvas');
@@ -4349,15 +4408,16 @@ class Material {
         return this._currentMaterialIndex;
     }
     loadTexture(url, index) {
-        console.log(this._textures);
-        if (index >= 0 && index < this._materials.length) {
-            const texture = new _texture__WEBPACK_IMPORTED_MODULE_2__.Texture();
-            texture.loadTexture(_gl__WEBPACK_IMPORTED_MODULE_0__.gl, url);
-            this._textures[index] = texture;
-        }
-        else {
-            console.warn(`Индекс материала ${index} вне диапазона.`);
-        }
+        return __awaiter(this, void 0, void 0, function* () {
+            if (index >= 0 && index < this._materials.length) {
+                const texture = new _texture__WEBPACK_IMPORTED_MODULE_2__.Texture();
+                yield texture.loadTexture(_gl__WEBPACK_IMPORTED_MODULE_0__.gl, url);
+                this._textures[index] = texture;
+            }
+            else {
+                console.warn(`Индекс материала ${index} вне диапазона.`);
+            }
+        });
     }
     loadEdgeShader() {
         const vertex = `
@@ -4490,7 +4550,7 @@ class Material {
                 return JSON.stringify({
                     shader: yield this._shader.toJson(),
                     edgeShader: yield this._edgeShader.toJson(),
-                    color: this._color,
+                    color: Array.from(this._color),
                     textures: texturesJson,
                     materials: materialsJson,
                     currentIndex: this._currentMaterialIndex
@@ -4541,6 +4601,8 @@ class Shader {
         this._attributes = {};
         this._uniforms = {};
         this._name = name;
+        this._vertexSrc = vertexSrc;
+        this._fragmentSrc = fragmentSrc;
         let vertex = this.loadShader(vertexSrc, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.VERTEX_SHADER);
         let fragment = this.loadShader(fragmentSrc, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.FRAGMENT_SHADER);
         this._program = this.createProgram(vertex, fragment);
@@ -4564,14 +4626,28 @@ class Shader {
         return this._uniforms[`${name}`];
     }
     toJson() {
-        return new Promise(resolve => {
-            resolve(JSON.stringify({
-                name: this._name,
-                program: this._program,
-                attributes: this._attributes,
-                uniforms: this._uniforms
-            }));
+        return JSON.stringify({
+            name: this._name,
+            vertexSrc: this._vertexSrc,
+            fragmentSrc: this._fragmentSrc,
+            attributes: Object.keys(this._attributes),
+            uniforms: Object.keys(this._uniforms)
         });
+    }
+    static fromJson(json) {
+        const data = JSON.parse(json);
+        const shader = new Shader(data.name, data.vertexSrc, data.fragmentSrc);
+        data.attributes.forEach((attr) => {
+            if (!shader._attributes[attr]) {
+                throw new Error(`Attribute [${attr}] not found in restored shader [${data.name}]`);
+            }
+        });
+        data.uniforms.forEach((uniform) => {
+            if (!shader._uniforms[uniform]) {
+                throw new Error(`Uniform [${uniform}] not found in restored shader [${data.name}]`);
+            }
+        });
+        return shader;
     }
     loadShader(source, shaderType) {
         let shader = _gl__WEBPACK_IMPORTED_MODULE_0__.gl.createShader(shaderType);
@@ -4627,53 +4703,68 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Texture: () => (/* binding */ Texture)
 /* harmony export */ });
+/* harmony import */ var _gl__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./gl */ "./public/engine/core/gl/gl.ts");
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
 class Texture {
     constructor() {
+        this._width = 0;
+        this._height = 0;
+        this._isLoaded = false;
         this._texture = null;
     }
-    toJson() {
-        return new Promise(resolve => {
-            resolve(JSON.stringify(this._texture));
-        });
-    }
     loadTexture(gl, url) {
-        const texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        const level = 0;
-        const internalFormat = gl.RGBA;
-        const width = 1;
-        const height = 1;
-        const border = 0;
-        const srcFormat = gl.RGBA;
-        const srcType = gl.UNSIGNED_BYTE;
-        const pixel = new Uint8Array([0, 0, 255, 255]); // непрозрачный синий пиксель
-        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixel);
-        const image = new Image();
-        image.onload = () => {
-            console.log(`Image loaded: ${url}`);
+        return new Promise((resolve, reject) => {
+            const texture = gl.createTexture();
+            if (!texture) {
+                reject(new Error("Failed to create WebGL texture"));
+                return;
+            }
             gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
-            if (this.isPowerOf2(image.width) && this.isPowerOf2(image.height)) {
-                gl.generateMipmap(gl.TEXTURE_2D);
-            }
-            else {
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            }
-            this._texture = texture;
-            console.log(`Texture loaded and bound: ${url}`);
-        };
-        image.onerror = () => {
-            console.error(`Failed to load image: ${url}`);
-        };
-        image.src = url;
+            const level = 0;
+            const internalFormat = gl.RGBA;
+            const width = 1;
+            const height = 1;
+            const border = 0;
+            const srcFormat = gl.RGBA;
+            const srcType = gl.UNSIGNED_BYTE;
+            const pixel = new Uint8Array([0, 0, 255, 255]); // Непрозрачный синий пиксель
+            gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixel);
+            const image = new Image();
+            image.onload = () => {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
+                if (this.isPowerOf2(image.width) && this.isPowerOf2(image.height)) {
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                }
+                else {
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                }
+                this._texture = texture;
+                this._width = image.width;
+                this._height = image.height;
+                resolve(); // Указываем, что текстура загружена
+            };
+            image.onerror = () => {
+                reject(new Error(`Failed to load image: ${url}`));
+            };
+            image.src = url;
+        });
     }
     bind(gl, unit) {
         if (this._texture) {
             gl.activeTexture(gl.TEXTURE0 + unit);
             gl.bindTexture(gl.TEXTURE_2D, this._texture);
-            console.log(`Texture bound to unit: ${unit}`);
         }
         else {
             console.error(`Texture not loaded`);
@@ -4684,6 +4775,63 @@ class Texture {
     }
     isPowerOf2(value) {
         return (value & (value - 1)) == 0;
+    }
+    toJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.isLoaded()) {
+                throw new Error("Texture is not loaded or dimensions are unknown");
+            }
+            const framebuffer = _gl__WEBPACK_IMPORTED_MODULE_0__.gl.createFramebuffer();
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindFramebuffer(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.FRAMEBUFFER, framebuffer);
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.framebufferTexture2D(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.FRAMEBUFFER, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.COLOR_ATTACHMENT0, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, this._texture, 0);
+            const pixels = new Uint8Array(this._width * this._height * 4);
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.readPixels(0, 0, this._width, this._height, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.RGBA, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_BYTE, pixels);
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindFramebuffer(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.FRAMEBUFFER, null);
+            _gl__WEBPACK_IMPORTED_MODULE_0__.gl.deleteFramebuffer(framebuffer);
+            // Преобразуем пиксели в Base64
+            const canvas = document.createElement("canvas");
+            canvas.width = this._width;
+            canvas.height = this._height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                throw new Error("Failed to create 2D context");
+            }
+            const imageData = ctx.createImageData(this._width, this._height);
+            imageData.data.set(pixels);
+            ctx.putImageData(imageData, 0, 0);
+            const base64 = canvas.toDataURL("image/png");
+            return JSON.stringify({
+                base64: base64,
+                width: this._width,
+                height: this._height
+            });
+        });
+    }
+    /**
+     * Загрузка текстуры из Base64
+     */
+    static fromJson(json) {
+        const data = JSON.parse(json);
+        const texture = new Texture();
+        const image = new Image();
+        image.src = data.base64;
+        return new Promise((resolve, reject) => {
+            image.onload = () => {
+                const tex = _gl__WEBPACK_IMPORTED_MODULE_0__.gl.createTexture();
+                _gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindTexture(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, tex);
+                _gl__WEBPACK_IMPORTED_MODULE_0__.gl.texImage2D(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, 0, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.RGBA, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.RGBA, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.UNSIGNED_BYTE, image);
+                _gl__WEBPACK_IMPORTED_MODULE_0__.gl.texParameteri(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_WRAP_S, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.CLAMP_TO_EDGE);
+                _gl__WEBPACK_IMPORTED_MODULE_0__.gl.texParameteri(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_WRAP_T, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.CLAMP_TO_EDGE);
+                _gl__WEBPACK_IMPORTED_MODULE_0__.gl.texParameteri(_gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_2D, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.TEXTURE_MIN_FILTER, _gl__WEBPACK_IMPORTED_MODULE_0__.gl.LINEAR);
+                texture._texture = tex;
+                texture._width = data.width;
+                texture._height = data.height;
+                resolve(texture);
+            };
+            image.onerror = () => {
+                reject(new Error("Failed to load texture from Base64"));
+            };
+        });
     }
 }
 
@@ -4726,7 +4874,6 @@ class GameObject {
         if (component) {
             return component;
         }
-        console.error(`Component with name [${name}] is undefined`);
     }
     RemoveComponent(name) {
         let component = this.components.findIndex(com => com.name === name);
@@ -4743,7 +4890,10 @@ class GameObject {
             const data = JSON.parse(json);
             const components = Promise.all(data.components.map((component) => __awaiter(this, void 0, void 0, function* () {
                 let comp = JSON.parse(component);
-                console.log(comp);
+                switch (comp.name) {
+                    case 'renderer':
+                        return;
+                }
             })));
             const gameObject = new GameObject(data.tag);
             gameObject.transform = yield _transform__WEBPACK_IMPORTED_MODULE_0__.Transform.fromJson(data.transform);
@@ -4998,26 +5148,34 @@ class Geometry {
         this._edgeIndexBuffer = null;
         this._vertexCount = 0;
         this._edgeCount = 0;
+        this._vertices = null;
+        this._texCoords = null;
+        this._indices = null;
+        this._edges = null;
     }
     static loadFromClass(template) {
         const geometry = new Geometry();
-        // Создаем буферы для вершин
+        // Вершины
+        geometry._vertices = new Float32Array(template.vertices);
         geometry._vertexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._vertexBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.vertices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        // Создаем буферы для текстурных координат
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._vertices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        // Текстурные координаты
+        geometry._texCoords = new Float32Array(template.texCoords);
         geometry._texCoordBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._texCoordBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, new Float32Array(template.texCoords), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
-        // Создаем буферы для индексов
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ARRAY_BUFFER, geometry._texCoords, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        // Индексы
+        geometry._indices = new Uint16Array(template.indices);
         geometry._indexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._indexBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.indices), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._indices, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         geometry._vertexCount = template.indices.length;
-        // Создаем буферы для ребер
+        // Ребра
+        geometry._edges = new Uint16Array(template.edges);
         geometry._edgeIndexBuffer = _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.createBuffer();
         _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bindBuffer(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._edgeIndexBuffer);
-        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(template.edges), _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.bufferData(_gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.ELEMENT_ARRAY_BUFFER, geometry._edges, _gl_gl__WEBPACK_IMPORTED_MODULE_0__.gl.STATIC_DRAW);
         geometry._edgeCount = template.edges.length;
         return geometry;
     }
@@ -5046,10 +5204,10 @@ class Geometry {
     toJson() {
         return new Promise(resolve => {
             resolve(JSON.stringify({
-                vertexBuffer: this._vertexBuffer,
-                texCoordsBuffer: this._texCoordBuffer,
-                indexBuffer: this._indexBuffer,
-                edgeIndexBuffer: this._edgeIndexBuffer,
+                vertices: Array.from(this._vertices || []),
+                texCoords: Array.from(this._texCoords || []),
+                indices: Array.from(this._indices || []),
+                edges: Array.from(this._edges || []),
                 vertexCount: this._vertexCount,
                 edgeCount: this._edgeCount
             }));
@@ -5178,6 +5336,7 @@ class Transform {
 /******/ var __webpack_exports__ = __webpack_require__("./public/engine/core/eng.ts");
 /******/ var __webpack_exports__AnimationClip = __webpack_exports__.AnimationClip;
 /******/ var __webpack_exports__Animator = __webpack_exports__.Animator;
+/******/ var __webpack_exports__Camera = __webpack_exports__.Camera;
 /******/ var __webpack_exports__Cube = __webpack_exports__.Cube;
 /******/ var __webpack_exports__Engine = __webpack_exports__.Engine;
 /******/ var __webpack_exports__GLUtilities = __webpack_exports__.GLUtilities;
@@ -5189,7 +5348,7 @@ class Transform {
 /******/ var __webpack_exports__TemplateGeometry = __webpack_exports__.TemplateGeometry;
 /******/ var __webpack_exports__Transform = __webpack_exports__.Transform;
 /******/ var __webpack_exports__default = __webpack_exports__["default"];
-/******/ export { __webpack_exports__AnimationClip as AnimationClip, __webpack_exports__Animator as Animator, __webpack_exports__Cube as Cube, __webpack_exports__Engine as Engine, __webpack_exports__GLUtilities as GLUtilities, __webpack_exports__GameObject as GameObject, __webpack_exports__Material as Material, __webpack_exports__Renderer as Renderer, __webpack_exports__Script as Script, __webpack_exports__Sphere as Sphere, __webpack_exports__TemplateGeometry as TemplateGeometry, __webpack_exports__Transform as Transform, __webpack_exports__default as default };
+/******/ export { __webpack_exports__AnimationClip as AnimationClip, __webpack_exports__Animator as Animator, __webpack_exports__Camera as Camera, __webpack_exports__Cube as Cube, __webpack_exports__Engine as Engine, __webpack_exports__GLUtilities as GLUtilities, __webpack_exports__GameObject as GameObject, __webpack_exports__Material as Material, __webpack_exports__Renderer as Renderer, __webpack_exports__Script as Script, __webpack_exports__Sphere as Sphere, __webpack_exports__TemplateGeometry as TemplateGeometry, __webpack_exports__Transform as Transform, __webpack_exports__default as default };
 /******/ 
 
 //# sourceMappingURL=engine.js.map

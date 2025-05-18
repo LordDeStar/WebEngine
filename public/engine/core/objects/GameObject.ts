@@ -21,7 +21,7 @@ export class GameObject {
         if (component) {
             return component as T;
         }
-        console.error(`Component with name [${name}] is undefined`);
+
     }
 
     public RemoveComponent(name: string): void {

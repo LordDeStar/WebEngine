@@ -12,6 +12,7 @@ import { GLUtilities } from '../gl/gl';
 export class Renderer implements ResizableComponent {
     public name: string = "renderer";
     public material: Material | undefined;
+    public color: number[];
     public _transform: Transform | undefined;
     public owner: GameObject | null = null;
     public textureUrl: string | undefined;
@@ -30,6 +31,7 @@ export class Renderer implements ResizableComponent {
         this.loadGeometry(geometry);
         this._isMaterialLoaded = false;
         this._materialUrl = materialUrl;
+        this.color = [0, 0, 0, 0]
     }
 
     public async OnStart(): Promise<void> {
@@ -51,6 +53,7 @@ export class Renderer implements ResizableComponent {
             }
             this.material.setCurrentMaterial(0);
             this._isMaterialLoaded = true;
+            this.color = [this.material._color[0], this.material._color[1], this.material._color[2], this.material._color[3]]
         }
     }
 
@@ -67,12 +70,15 @@ export class Renderer implements ResizableComponent {
         this._projection = args._projection;
         this._viewMatrix = args._viewMatrix;
     }
-
+    public async loadFromUrl(url: string) {
+        const geometry = await TemplateGeometry.loadFromOBJ(url);
+        this.loadGeometry(geometry);
+    }
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
-    public loadTexture(url: string): void {
-        this.material?.loadTexture(url, this.material?.getCurrentMaterialIndex());
+    public async loadTexture(url: string): Promise<void> {
+        await this.material?.loadTexture(url, this.material?.getCurrentMaterialIndex());
     }
 
     public toJson(): Promise<string> {
@@ -80,8 +86,8 @@ export class Renderer implements ResizableComponent {
             resolve(JSON.stringify({
                 name: this.name,
                 material: await this.material?.toJson(),
-                viewMatrix: this._viewMatrix,
-                projection: this._projection,
+                viewMatrix: Array.from(this._viewMatrix),
+                projection: Array.from(this._projection),
                 geometry: await this._geometry?.toJson(),
                 drawingEdges: this._isDrawingEdges,
             }))
