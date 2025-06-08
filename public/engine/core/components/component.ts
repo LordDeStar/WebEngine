@@ -2,6 +2,7 @@ import { GameObject } from "../objects/GameObject";
 export interface Component {
     name: string;
     owner: GameObject | null;
+    subname: string;
     OnStart(): Promise<void>;
     OnUpdate(): void;
     BeforeRemove(): void;

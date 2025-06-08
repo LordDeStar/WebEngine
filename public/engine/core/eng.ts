@@ -1,7 +1,8 @@
+import { KeyboardManager } from './event-system/keyboard-manager';
 import { Script } from './components/Script';
 import { GLUtilities, gl } from "./gl/gl";
 import { GameObject } from "./objects/GameObject";
-import { mat4, vec3 } from "gl-matrix";
+import { mat4, vec3, vec4 } from "gl-matrix";
 import { Light } from "./gl/light";
 import { Component, ResizableComponent } from "./components/component";
 import { Material } from "./gl/material";
@@ -10,40 +11,32 @@ import { Transform } from "./objects/transform";
 import { Cube, Sphere, TemplateGeometry } from "./objects/geometries";
 import { AnimationClip, Animator } from "./components/Animator";
 import { Camera } from './components/Camera';
+import { EventEmitter } from './event-system/emitter';
+import { MouseManager } from './event-system/mouse-manager';
 class Engine {
-  private _canvas: HTMLCanvasElement | undefined;
+  public static canvas: HTMLCanvasElement | undefined;
   public static viewMatrix: mat4 | undefined;
   public static _light: Light;
   private _objects: GameObject[] = [];
+  private _color: string | null = null;
   public isInited: boolean
-  public static mousePosition: vec3;
+  public static eventEmitter: EventEmitter;
+  private keyboardManager: KeyboardManager | undefined;
+  private mouseManager: MouseManager | undefined;
   constructor(width: string, height: string) {
     this.isInited = false
+    Engine.eventEmitter = new EventEmitter();
   }
 
-  public init(id: string): void {
-    this._canvas = GLUtilities.init(id);
-
+  public init(id: string, theme: string): void {
+    Engine.canvas = GLUtilities.init(id);
+    this._color = theme;
     Engine._light = this.createLight();
     Engine.viewMatrix = Engine.createViewMatrix();
-    this._canvas.addEventListener('mousemove', (e: MouseEvent) => {
-      Engine.mousePosition = 
-    })
+    this.keyboardManager = new KeyboardManager(Engine.eventEmitter);
+    this.mouseManager = new MouseManager(Engine.eventEmitter);
     this.isInited = true;
   }
-
-  private getMousePos(event: MouseEvent): vec3 {
-    const rect = this._canvas?.getBoundingClientRect();
-    const scaleX = this._canvas.width / rect.width;    // Соотношение ширины канваса и его CSS-размера
-    const scaleY = this.canvas.height / rect.height;  // Соотношение высоты канваса и его CSS-размера
-
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (this.canvas.height - (event.clientY - rect.top) * scaleY); // Инвертируем Y-координату
-    const z = 0; // Предполагаем, что Z-координата равна 0 (плоскость экрана)
-
-    return vec3.fromValues(x, y, z);
-  }
-
 
   private createLight(): Light {
     const light = new Light();
@@ -52,35 +45,35 @@ class Engine {
   }
 
   public resize(): void {
-    if (!this._canvas) {
+    if (!Engine.canvas) {
       return;
     }
     // Синхронизируем физические размеры canvas с его отображаемыми размерами
-    const displayWidth = this._canvas?.clientWidth;
-    const displayHeight = this._canvas?.clientHeight;
+    const displayWidth = Engine.canvas?.clientWidth;
+    const displayHeight = Engine.canvas?.clientHeight;
 
-    if (this._canvas.width !== displayWidth || this._canvas.height !== displayHeight) {
-      this._canvas.width = displayWidth;
-      this._canvas.height = displayHeight;
+    if (Engine.canvas.width !== displayWidth || Engine.canvas.height !== displayHeight) {
+      Engine.canvas.width = displayWidth;
+      Engine.canvas.height = displayHeight;
     }
 
     // Обновляем viewport и матрицу проекции
-    gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+    gl.viewport(0, 0, Engine.canvas.width, Engine.canvas.height);
     this._objects.forEach(i => {
       let renderer = <ResizableComponent | undefined>i.GetComponent("renderer");
       if (renderer) {
-        renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
+        renderer.OnResize({ _projection: Engine.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
       }
     });
   }
 
-  private createPerspectiveMatrix(): mat4 {
+  public static createPerspectiveMatrix(): mat4 {
     const projectionMatrix = mat4.create();
-    if (!this._canvas) {
+    if (!Engine.canvas) {
       return projectionMatrix;
     }
     const fieldOfView = 45 * Math.PI / 180;
-    const aspect = this._canvas.clientWidth / this._canvas.clientHeight;
+    const aspect = Engine.canvas.clientWidth / Engine.canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100.0;
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
@@ -96,8 +89,14 @@ class Engine {
     return viewMatrix;
   }
 
-  public async start(): Promise<void> {
-    gl.clearColor(0, 0, 0, 1);
+  public async start(theme: string): Promise<void> {
+    this._color = theme;
+    if (this._color && this._color == "light") {
+      gl.clearColor(1, 1, 1, 1);
+    }
+    else {
+      gl.clearColor(0, 0, 0, 1);
+    }
     gl.enable(gl.DEPTH_TEST);
 
     window.addEventListener('resize', () => this.resize());
@@ -105,27 +104,38 @@ class Engine {
     await Promise.all(
       this._objects.map(obj =>
         Promise.all(obj.components.map(async component => {
-          if (typeof component.OnStart === 'function') {
-            await component.OnStart();
-          }
+          return await component.OnStart();
         }))
       )
     );
 
     this.resize();
-
     this.loop();
   }
 
-  private loop(): void {
+  public loop(): void {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
     this._objects.forEach(i => {
       i.components.forEach(j => {
         j.OnUpdate();
       })
     });
     requestAnimationFrame(() => this.loop());
+  }
+
+  public async saveToJson(): Promise<string> {
+    if (!Engine.viewMatrix) throw new Error("Camera must be initialized!");
+    if (!Engine._light) throw new Error("Light must be initialized!");
+    const objects = await Promise.all(
+      this._objects.map(async (object) => {
+        return await object.toJson();
+      })
+    )
+    return JSON.stringify({
+      camera: Array.from(Engine.viewMatrix),
+      light: Engine._light.toJson(),
+      objects: objects,
+    })
   }
 
 }

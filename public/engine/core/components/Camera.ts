@@ -9,12 +9,14 @@ export class Camera implements Component {
     public eye: vec3;
     public center: vec3;
     public up: vec3;
+    public subname: string;
 
     public isGameStart = false;
 
-    constructor() {
+    constructor(name: string) {
         this.name = "camera";
         this.viewMatrix = mat4.create();
+        this.subname = name;
 
         this.eye = vec3.fromValues(0, 0, 3);
         this.center = vec3.fromValues(0, 0, 5);
@@ -23,9 +25,7 @@ export class Camera implements Component {
 
 
 
-    public lookAt(x: number, y: number): void {
-        this.center = vec3.fromValues(x, y, this.eye[3] + 5);
-    }
+
 
     private updateMatrix(): void {
         if (this.owner) {

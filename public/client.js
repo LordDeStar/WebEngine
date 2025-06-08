@@ -8,9 +8,9 @@ let box = new GameObject("box");
 let camera = new GameObject('camera');
 
 
+let cameraSpeed = 0.2;
 let cameraComponent = new Camera();
-let geometry = await TemplateGeometry.loadFromOBJ('./Vector.obj');
-let renderer = new Renderer(geometry, './default.mtl', true);
+let renderer = new Renderer('http://localhost:3003/user-1/qwe/123/Vector.obj', './default.mtl', true, 'http://localhost:3003/user-1/qwe/123/foxy.png');
 
 box.transform.position[0] = 0;
 box.transform.position[1] = 0;
@@ -27,20 +27,16 @@ await world.start();
 
 
 
+
+
 document.addEventListener('keydown', (e)=>{
-    if(e.key == 'd') camera.transform.position[0] += 1;
-    if(e.key == 'a') camera.transform.position[0] -= 1;
-    if(e.key == 'w') camera.transform.position[2] += 1;
-    if(e.key == 's') camera.transform.position[2] -= 1;
+    if(e.key == 'd') camera.transform.position[0] -= cameraSpeed;
+    if(e.key == 'a') camera.transform.position[0] += cameraSpeed;
+    if(e.key == 'w') camera.transform.position[2] += cameraSpeed;
+    if(e.key == 's') camera.transform.position[2] -= cameraSpeed;
 
 
     console.log(Engine.viewMatrix)
 })
 
-document.getElementById('main').addEventListener('mousemove', (e)=>{
-    let x = e.clientX;
-    let y = e.clientY;
 
-
-    cameraComponent.setCenter(x,y);
-})

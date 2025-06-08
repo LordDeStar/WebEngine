@@ -52,7 +52,7 @@ export class Texture {
       image.onerror = () => {
         reject(new Error(`Failed to load image: ${url}`));
       };
-
+      image.crossOrigin = 'anonymous';
       image.src = url;
     });
   }

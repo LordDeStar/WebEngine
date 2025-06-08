@@ -22,7 +22,10 @@ export class Animator implements Component {
     public current: AnimationClip | null = null;
     public currentIndex: number = -1;
     public owner: GameObject | null = null;
-    constructor() {
+    public allowedToStart = false;
+    public subname: string;
+    constructor(name: string) {
+        this.subname = name;
     }
     public AddClip(update: any): void {
         if (!this.owner) return;
@@ -38,7 +41,7 @@ export class Animator implements Component {
 
     }
     public OnUpdate(): void {
-        if (this.current) {
+        if (this.current && this.allowedToStart) {
             this.current.Update();
         }
     }

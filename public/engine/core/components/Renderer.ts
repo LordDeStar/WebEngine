@@ -19,19 +19,24 @@ export class Renderer implements ResizableComponent {
     private _projection: mat4;
     private _viewMatrix: mat4;
     private _geometry: Geometry | undefined;
-    private _isDrawingEdges: boolean;
+    public isDrawingEdges: boolean;
     private _isMaterialLoaded: boolean;
-    private _materialUrl: string
+    private _materialUrl: string;
+    public geometryUrl: string | undefined;
+    public allowedToStart = true;
+    public subname: string = 'renderer';
 
-
-    constructor(geometry: TemplateGeometry, materialUrl: string, isDrawingEdges: boolean = false) {
+    constructor(geometryUrl: string, materialUrl: string, isDrawingEdges: boolean = false, textureUrl: string | undefined = undefined, color: number[]) {
         this._projection = mat4.create();
         this._viewMatrix = mat4.create();
-        this._isDrawingEdges = isDrawingEdges;
-        this.loadGeometry(geometry);
+        this.isDrawingEdges = isDrawingEdges;
+        this.loadFromUrl(geometryUrl);
         this._isMaterialLoaded = false;
         this._materialUrl = materialUrl;
-        this.color = [0, 0, 0, 0]
+        this.color = color;
+        this.textureUrl = textureUrl;
+
+
     }
 
     public async OnStart(): Promise<void> {
@@ -53,7 +58,11 @@ export class Renderer implements ResizableComponent {
             }
             this.material.setCurrentMaterial(0);
             this._isMaterialLoaded = true;
-            this.color = [this.material._color[0], this.material._color[1], this.material._color[2], this.material._color[3]]
+            this.setColor(this.color[0], this.color[1], this.color[2], this.color[3]);
+
+            if (this.textureUrl) {
+                this.loadTexture(this.textureUrl);
+            }
         }
     }
 
@@ -64,6 +73,10 @@ export class Renderer implements ResizableComponent {
     public BeforeRemove(): void {
     }
     public setColor(r: number, g: number, b: number, a: number): void {
+        this.color[0] = r;
+        this.color[1] = g;
+        this.color[2] = b;
+        this.color[3] = a;
         this.material?.setColor(r, g, b, a);
     }
     public OnResize(args: any): void {
@@ -72,12 +85,14 @@ export class Renderer implements ResizableComponent {
     }
     public async loadFromUrl(url: string) {
         const geometry = await TemplateGeometry.loadFromOBJ(url);
+        this.geometryUrl = url;
         this.loadGeometry(geometry);
     }
     public loadGeometry(template: TemplateGeometry): void {
         this._geometry = Geometry.loadFromClass(template);
     }
     public async loadTexture(url: string): Promise<void> {
+        this.textureUrl = url;
         await this.material?.loadTexture(url, this.material?.getCurrentMaterialIndex());
     }
 
@@ -85,11 +100,10 @@ export class Renderer implements ResizableComponent {
         return new Promise<string>(async resolve => {
             resolve(JSON.stringify({
                 name: this.name,
-                material: await this.material?.toJson(),
-                viewMatrix: Array.from(this._viewMatrix),
-                projection: Array.from(this._projection),
-                geometry: await this._geometry?.toJson(),
-                drawingEdges: this._isDrawingEdges,
+                color: Array.from(this.color),
+                materialUrl: this._materialUrl,
+                geometryUrl: this.geometryUrl,
+                textureUrl: this.textureUrl
             }))
         })
     }
@@ -128,7 +142,7 @@ export class Renderer implements ResizableComponent {
         gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
 
         this._geometry.draw();
-        if (this._isDrawingEdges) {
+        if (this.isDrawingEdges) {
             this.material.edgeUse();
             posLocation = this.material.getAttributePosition('pos', 'edge');
             if (posLocation == -1) {

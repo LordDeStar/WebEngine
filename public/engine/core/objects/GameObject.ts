@@ -24,9 +24,15 @@ export class GameObject {
 
     }
 
-    public RemoveComponent(name: string): void {
-        let component = this.components.findIndex(com => com.name === name);
-        if (component != -1) {
+    public RemoveComponent(name: string, subname?: string): void {
+        let components = this.components.filter(com => com.name === name);
+        if (components.length == 1) {
+            let index = this.components.findIndex(comp => comp === components[0]);
+            this.components[index].BeforeRemove();
+            this.components.splice(index, 1);
+        }
+        else if (components.length > 1 && subname) {
+            let component = this.components.findIndex(com => com.subname == subname);
             this.components[component].BeforeRemove();
             this.components.splice(component, 1);
         }
@@ -56,12 +62,9 @@ export class GameObject {
         return gameObject;
     }
     public async toJson(): Promise<string> {
-        // Ожидаем завершения всех асинхронных операций для компонентов
         const componentsJson = await Promise.all(
             this.components.map(async (component) => await component.toJson())
         );
-
-        // Сериализуем объект после завершения всех операций
         return JSON.stringify({
             tag: this.tag,
             transform: await this.transform.toJson(),

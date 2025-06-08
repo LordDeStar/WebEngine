@@ -3642,12 +3642,14 @@ class AnimationClip {
     }
 }
 class Animator {
-    constructor() {
+    constructor(name) {
         this.name = "animator";
         this.clips = [];
         this.current = null;
         this.currentIndex = -1;
         this.owner = null;
+        this.allowedToStart = false;
+        this.subname = name;
     }
     AddClip(update) {
         if (!this.owner)
@@ -3665,7 +3667,7 @@ class Animator {
         });
     }
     OnUpdate() {
-        if (this.current) {
+        if (this.current && this.allowedToStart) {
             this.current.Update();
         }
     }
@@ -3720,17 +3722,15 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 class Camera {
-    constructor() {
+    constructor(name) {
         this.owner = null;
         this.isGameStart = false;
         this.name = "camera";
         this.viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
+        this.subname = name;
         this.eye = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 0, 3);
         this.center = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 0, 5);
         this.up = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(0, 1, 0);
-    }
-    lookAt(x, y) {
-        this.center = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.fromValues(x, y, this.eye[3] + 5);
     }
     updateMatrix() {
         if (this.owner) {
@@ -3797,16 +3797,19 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 class Renderer {
-    constructor(geometry, materialUrl, isDrawingEdges = false) {
+    constructor(geometryUrl, materialUrl, isDrawingEdges = false, textureUrl = undefined, color) {
         this.name = "renderer";
         this.owner = null;
+        this.allowedToStart = true;
+        this.subname = 'renderer';
         this._projection = gl_matrix__WEBPACK_IMPORTED_MODULE_5__.create();
         this._viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_5__.create();
-        this._isDrawingEdges = isDrawingEdges;
-        this.loadGeometry(geometry);
+        this.isDrawingEdges = isDrawingEdges;
+        this.loadFromUrl(geometryUrl);
         this._isMaterialLoaded = false;
         this._materialUrl = materialUrl;
-        this.color = [0, 0, 0, 0];
+        this.color = color;
+        this.textureUrl = textureUrl;
     }
     OnStart() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -3830,7 +3833,10 @@ class Renderer {
                 }
                 this.material.setCurrentMaterial(0);
                 this._isMaterialLoaded = true;
-                this.color = [this.material._color[0], this.material._color[1], this.material._color[2], this.material._color[3]];
+                this.setColor(this.color[0], this.color[1], this.color[2], this.color[3]);
+                if (this.textureUrl) {
+                    this.loadTexture(this.textureUrl);
+                }
             }
         });
     }
@@ -3841,6 +3847,10 @@ class Renderer {
     }
     setColor(r, g, b, a) {
         var _a;
+        this.color[0] = r;
+        this.color[1] = g;
+        this.color[2] = b;
+        this.color[3] = a;
         (_a = this.material) === null || _a === void 0 ? void 0 : _a.setColor(r, g, b, a);
     }
     OnResize(args) {
@@ -3850,6 +3860,7 @@ class Renderer {
     loadFromUrl(url) {
         return __awaiter(this, void 0, void 0, function* () {
             const geometry = yield _objects_geometries__WEBPACK_IMPORTED_MODULE_0__.TemplateGeometry.loadFromOBJ(url);
+            this.geometryUrl = url;
             this.loadGeometry(geometry);
         });
     }
@@ -3859,19 +3870,18 @@ class Renderer {
     loadTexture(url) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
+            this.textureUrl = url;
             yield ((_a = this.material) === null || _a === void 0 ? void 0 : _a.loadTexture(url, (_b = this.material) === null || _b === void 0 ? void 0 : _b.getCurrentMaterialIndex()));
         });
     }
     toJson() {
         return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
             resolve(JSON.stringify({
                 name: this.name,
-                material: yield ((_a = this.material) === null || _a === void 0 ? void 0 : _a.toJson()),
-                viewMatrix: Array.from(this._viewMatrix),
-                projection: Array.from(this._projection),
-                geometry: yield ((_b = this._geometry) === null || _b === void 0 ? void 0 : _b.toJson()),
-                drawingEdges: this._isDrawingEdges,
+                color: Array.from(this.color),
+                materialUrl: this._materialUrl,
+                geometryUrl: this.geometryUrl,
+                textureUrl: this.textureUrl
             }));
         }));
     }
@@ -3904,7 +3914,7 @@ class Renderer {
         let loc = this.material.getUniformPosition('matrix', 'basic');
         _gl_gl__WEBPACK_IMPORTED_MODULE_3__.gl.uniformMatrix4fv(loc, false, new Float32Array(mvpMatrix));
         this._geometry.draw();
-        if (this._isDrawingEdges) {
+        if (this.isDrawingEdges) {
             this.material.edgeUse();
             posLocation = this.material.getAttributePosition('pos', 'edge');
             if (posLocation == -1) {
@@ -3932,6 +3942,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Script: () => (/* binding */ Script)
 /* harmony export */ });
+/* harmony import */ var _eng__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../eng */ "./public/engine/core/eng.ts");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -3941,40 +3952,62 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+
 class Script {
     constructor(scriptData) {
         this.owner = null;
         this.name = "script";
-        this._data = scriptData;
+        this.allowedToStart = false;
+        this.data = scriptData;
+        this.subname = scriptData.name;
+        this.init();
+    }
+    setParams(newData) {
+        this.params = newData;
     }
     OnStart() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.init();
-            if (this._data.onStart)
-                this._data.onStart(this.owner);
+            if (this.data.onStart)
+                this.data.onStart(this.owner, this.params);
+            if (this.data.onKeyDown && typeof this.data.onKeyDown === 'function')
+                _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.eventEmitter.on('keydown', (event) => {
+                    this.data.onKeyDown(event, this.owner, this.params);
+                });
+            if (this.data.onKeyUp && typeof this.data.onKeyUp === 'function')
+                _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.eventEmitter.on('keyup', (event) => {
+                    this.data.onKeyUp(event, this.owner, this.params);
+                });
+            if (this.data.onMouseDown && typeof this.data.onMouseDown === 'function')
+                _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.eventEmitter.on('mousedown', (event) => {
+                    this.data.onMouseDown(event, this.owner, this.params);
+                });
+            if (this.data.onMouseUp && typeof this.data.onMouseUp === 'function')
+                _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.eventEmitter.on('mouseup', (event) => {
+                    this.data.onMouseUp(event, this.owner, this.params);
+                });
         });
     }
     OnUpdate() {
-        if (this._data.onUpdate)
-            this._data.onUpdate(this.owner, this._params);
+        if (this.data.onUpdate && this.allowedToStart)
+            this.data.onUpdate(this.owner, this.params);
     }
     BeforeRemove() {
-        if (this._data.beforeRemove)
-            this._data.beforeRemove(this.owner);
+        if (this.data.beforeRemove)
+            this.data.beforeRemove(this.owner);
         ;
     }
     toJson() {
         return new Promise(resolve => {
             resolve(JSON.stringify({
                 name: this.name,
-                params: this._params,
-                data: this._data
+                subname: this.subname,
+                fileUrl: this.fileUrl
             }));
         });
     }
     init() {
-        if (this._data.init)
-            this._params = this._data.init();
+        if (this.data.init)
+            this.params = this.data.init();
     }
 }
 
@@ -3989,33 +4022,36 @@ class Script {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   AnimationClip: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip),
-/* harmony export */   Animator: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator),
-/* harmony export */   Camera: () => (/* reexport safe */ _components_Camera__WEBPACK_IMPORTED_MODULE_9__.Camera),
-/* harmony export */   Cube: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Cube),
+/* harmony export */   AnimationClip: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_9__.AnimationClip),
+/* harmony export */   Animator: () => (/* reexport safe */ _components_Animator__WEBPACK_IMPORTED_MODULE_9__.Animator),
+/* harmony export */   Camera: () => (/* reexport safe */ _components_Camera__WEBPACK_IMPORTED_MODULE_10__.Camera),
+/* harmony export */   Cube: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.Cube),
 /* harmony export */   Engine: () => (/* binding */ Engine),
-/* harmony export */   GLUtilities: () => (/* reexport safe */ _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities),
-/* harmony export */   GameObject: () => (/* reexport safe */ _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject),
-/* harmony export */   Material: () => (/* reexport safe */ _gl_material__WEBPACK_IMPORTED_MODULE_4__.Material),
-/* harmony export */   Renderer: () => (/* reexport safe */ _components_Renderer__WEBPACK_IMPORTED_MODULE_5__.Renderer),
-/* harmony export */   Script: () => (/* reexport safe */ _components_Script__WEBPACK_IMPORTED_MODULE_0__.Script),
-/* harmony export */   Sphere: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Sphere),
-/* harmony export */   TemplateGeometry: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.TemplateGeometry),
-/* harmony export */   Transform: () => (/* reexport safe */ _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform),
+/* harmony export */   GLUtilities: () => (/* reexport safe */ _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities),
+/* harmony export */   GameObject: () => (/* reexport safe */ _objects_GameObject__WEBPACK_IMPORTED_MODULE_3__.GameObject),
+/* harmony export */   Material: () => (/* reexport safe */ _gl_material__WEBPACK_IMPORTED_MODULE_5__.Material),
+/* harmony export */   Renderer: () => (/* reexport safe */ _components_Renderer__WEBPACK_IMPORTED_MODULE_6__.Renderer),
+/* harmony export */   Script: () => (/* reexport safe */ _components_Script__WEBPACK_IMPORTED_MODULE_1__.Script),
+/* harmony export */   Sphere: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.Sphere),
+/* harmony export */   TemplateGeometry: () => (/* reexport safe */ _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.TemplateGeometry),
+/* harmony export */   Transform: () => (/* reexport safe */ _objects_transform__WEBPACK_IMPORTED_MODULE_7__.Transform),
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _components_Script__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./components/Script */ "./public/engine/core/components/Script.ts");
-/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
-/* harmony import */ var _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./objects/GameObject */ "./public/engine/core/objects/GameObject.ts");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
-/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
-/* harmony import */ var _gl_light__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gl/light */ "./public/engine/core/gl/light.ts");
-/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./gl/material */ "./public/engine/core/gl/material.ts");
-/* harmony import */ var _components_Renderer__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/Renderer */ "./public/engine/core/components/Renderer.ts");
-/* harmony import */ var _objects_transform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./objects/transform */ "./public/engine/core/objects/transform.ts");
-/* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./objects/geometries */ "./public/engine/core/objects/geometries.ts");
-/* harmony import */ var _components_Animator__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./components/Animator */ "./public/engine/core/components/Animator.ts");
-/* harmony import */ var _components_Camera__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./components/Camera */ "./public/engine/core/components/Camera.ts");
+/* harmony import */ var _event_system_keyboard_manager__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./event-system/keyboard-manager */ "./public/engine/core/event-system/keyboard-manager.ts");
+/* harmony import */ var _components_Script__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./components/Script */ "./public/engine/core/components/Script.ts");
+/* harmony import */ var _gl_gl__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./gl/gl */ "./public/engine/core/gl/gl.ts");
+/* harmony import */ var _objects_GameObject__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./objects/GameObject */ "./public/engine/core/objects/GameObject.ts");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec3.js");
+/* harmony import */ var _gl_light__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./gl/light */ "./public/engine/core/gl/light.ts");
+/* harmony import */ var _gl_material__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./gl/material */ "./public/engine/core/gl/material.ts");
+/* harmony import */ var _components_Renderer__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./components/Renderer */ "./public/engine/core/components/Renderer.ts");
+/* harmony import */ var _objects_transform__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./objects/transform */ "./public/engine/core/objects/transform.ts");
+/* harmony import */ var _objects_geometries__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./objects/geometries */ "./public/engine/core/objects/geometries.ts");
+/* harmony import */ var _components_Animator__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./components/Animator */ "./public/engine/core/components/Animator.ts");
+/* harmony import */ var _components_Camera__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./components/Camera */ "./public/engine/core/components/Camera.ts");
+/* harmony import */ var _event_system_emitter__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./event-system/emitter */ "./public/engine/core/event-system/emitter.ts");
+/* harmony import */ var _event_system_mouse_manager__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./event-system/mouse-manager */ "./public/engine/core/event-system/mouse-manager.ts");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -4036,79 +4072,91 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+
+
+
 class Engine {
     constructor(width, height) {
         this._objects = [];
+        this._color = null;
         this.isInited = false;
+        Engine.eventEmitter = new _event_system_emitter__WEBPACK_IMPORTED_MODULE_11__.EventEmitter();
     }
-    init(id) {
-        this._canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities.init(id);
+    init(id, theme) {
+        Engine.canvas = _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities.init(id);
+        this._color = theme;
         Engine._light = this.createLight();
         Engine.viewMatrix = Engine.createViewMatrix();
+        this.keyboardManager = new _event_system_keyboard_manager__WEBPACK_IMPORTED_MODULE_0__.KeyboardManager(Engine.eventEmitter);
+        this.mouseManager = new _event_system_mouse_manager__WEBPACK_IMPORTED_MODULE_12__.MouseManager(Engine.eventEmitter);
         this.isInited = true;
     }
     createLight() {
-        const light = new _gl_light__WEBPACK_IMPORTED_MODULE_3__.Light();
+        const light = new _gl_light__WEBPACK_IMPORTED_MODULE_4__.Light();
         light.setDirection(0.0, 1.0, 0.0);
         return light;
     }
     resize() {
         var _a, _b;
-        if (!this._canvas) {
+        if (!Engine.canvas) {
             return;
         }
         // Синхронизируем физические размеры canvas с его отображаемыми размерами
-        const displayWidth = (_a = this._canvas) === null || _a === void 0 ? void 0 : _a.clientWidth;
-        const displayHeight = (_b = this._canvas) === null || _b === void 0 ? void 0 : _b.clientHeight;
-        if (this._canvas.width !== displayWidth || this._canvas.height !== displayHeight) {
-            this._canvas.width = displayWidth;
-            this._canvas.height = displayHeight;
+        const displayWidth = (_a = Engine.canvas) === null || _a === void 0 ? void 0 : _a.clientWidth;
+        const displayHeight = (_b = Engine.canvas) === null || _b === void 0 ? void 0 : _b.clientHeight;
+        if (Engine.canvas.width !== displayWidth || Engine.canvas.height !== displayHeight) {
+            Engine.canvas.width = displayWidth;
+            Engine.canvas.height = displayHeight;
         }
         // Обновляем viewport и матрицу проекции
-        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.viewport(0, 0, Engine.canvas.width, Engine.canvas.height);
         this._objects.forEach(i => {
             let renderer = i.GetComponent("renderer");
             if (renderer) {
-                renderer.OnResize({ _projection: this.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
+                renderer.OnResize({ _projection: Engine.createPerspectiveMatrix(), _viewMatrix: Engine.viewMatrix });
             }
         });
     }
-    createPerspectiveMatrix() {
-        const projectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.create();
-        if (!this._canvas) {
+    static createPerspectiveMatrix() {
+        const projectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_13__.create();
+        if (!Engine.canvas) {
             return projectionMatrix;
         }
         const fieldOfView = 45 * Math.PI / 180;
-        const aspect = this._canvas.clientWidth / this._canvas.clientHeight;
+        const aspect = Engine.canvas.clientWidth / Engine.canvas.clientHeight;
         const zNear = 0.1;
         const zFar = 100.0;
-        gl_matrix__WEBPACK_IMPORTED_MODULE_10__.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_13__.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
         return projectionMatrix;
     }
     static createViewMatrix() {
-        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_10__.create();
-        const eye = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 0, 3);
-        const center = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 0, 5);
-        const up = gl_matrix__WEBPACK_IMPORTED_MODULE_11__.fromValues(0, 1, 0);
-        gl_matrix__WEBPACK_IMPORTED_MODULE_10__.lookAt(viewMatrix, eye, center, up);
+        const viewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_13__.create();
+        const eye = gl_matrix__WEBPACK_IMPORTED_MODULE_14__.fromValues(0, 0, 3);
+        const center = gl_matrix__WEBPACK_IMPORTED_MODULE_14__.fromValues(0, 0, 5);
+        const up = gl_matrix__WEBPACK_IMPORTED_MODULE_14__.fromValues(0, 1, 0);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_13__.lookAt(viewMatrix, eye, center, up);
         return viewMatrix;
     }
-    start() {
+    start(theme) {
         return __awaiter(this, void 0, void 0, function* () {
-            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clearColor(0, 0, 0, 1);
-            _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_TEST);
+            this._color = theme;
+            if (this._color && this._color == "light") {
+                _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.clearColor(1, 1, 1, 1);
+            }
+            else {
+                _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.clearColor(0, 0, 0, 1);
+            }
+            _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.enable(_gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.DEPTH_TEST);
             window.addEventListener('resize', () => this.resize());
             yield Promise.all(this._objects.map(obj => Promise.all(obj.components.map((component) => __awaiter(this, void 0, void 0, function* () {
-                if (typeof component.OnStart === 'function') {
-                    yield component.OnStart();
-                }
+                return yield component.OnStart();
             })))));
             this.resize();
             this.loop();
         });
     }
     loop() {
-        _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.clear(_gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.COLOR_BUFFER_BIT | _gl_gl__WEBPACK_IMPORTED_MODULE_1__.gl.DEPTH_BUFFER_BIT);
+        _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.clear(_gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.COLOR_BUFFER_BIT | _gl_gl__WEBPACK_IMPORTED_MODULE_2__.gl.DEPTH_BUFFER_BIT);
         this._objects.forEach(i => {
             i.components.forEach(j => {
                 j.OnUpdate();
@@ -4116,24 +4164,207 @@ class Engine {
         });
         requestAnimationFrame(() => this.loop());
     }
+    saveToJson() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!Engine.viewMatrix)
+                throw new Error("Camera must be initialized!");
+            if (!Engine._light)
+                throw new Error("Light must be initialized!");
+            const objects = yield Promise.all(this._objects.map((object) => __awaiter(this, void 0, void 0, function* () {
+                return yield object.toJson();
+            })));
+            return JSON.stringify({
+                camera: Array.from(Engine.viewMatrix),
+                light: Engine._light.toJson(),
+                objects: objects,
+            });
+        });
+    }
 }
 
 const SDK = {
-    Camera: _components_Camera__WEBPACK_IMPORTED_MODULE_9__.Camera,
-    AnimationClip: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.AnimationClip,
-    Animator: _components_Animator__WEBPACK_IMPORTED_MODULE_8__.Animator,
+    Camera: _components_Camera__WEBPACK_IMPORTED_MODULE_10__.Camera,
+    AnimationClip: _components_Animator__WEBPACK_IMPORTED_MODULE_9__.AnimationClip,
+    Animator: _components_Animator__WEBPACK_IMPORTED_MODULE_9__.Animator,
     Engine,
-    GameObject: _objects_GameObject__WEBPACK_IMPORTED_MODULE_2__.GameObject,
-    Material: _gl_material__WEBPACK_IMPORTED_MODULE_4__.Material,
-    Renderer: _components_Renderer__WEBPACK_IMPORTED_MODULE_5__.Renderer,
-    Transform: _objects_transform__WEBPACK_IMPORTED_MODULE_6__.Transform,
-    Cube: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Cube,
-    Sphere: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.Sphere,
-    TemplateGeometry: _objects_geometries__WEBPACK_IMPORTED_MODULE_7__.TemplateGeometry,
-    Script: _components_Script__WEBPACK_IMPORTED_MODULE_0__.Script,
-    GLUtilities: _gl_gl__WEBPACK_IMPORTED_MODULE_1__.GLUtilities
+    GameObject: _objects_GameObject__WEBPACK_IMPORTED_MODULE_3__.GameObject,
+    Material: _gl_material__WEBPACK_IMPORTED_MODULE_5__.Material,
+    Renderer: _components_Renderer__WEBPACK_IMPORTED_MODULE_6__.Renderer,
+    Transform: _objects_transform__WEBPACK_IMPORTED_MODULE_7__.Transform,
+    Cube: _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.Cube,
+    Sphere: _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.Sphere,
+    TemplateGeometry: _objects_geometries__WEBPACK_IMPORTED_MODULE_8__.TemplateGeometry,
+    Script: _components_Script__WEBPACK_IMPORTED_MODULE_1__.Script,
+    GLUtilities: _gl_gl__WEBPACK_IMPORTED_MODULE_2__.GLUtilities
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (SDK);
+
+
+/***/ }),
+
+/***/ "./public/engine/core/event-system/emitter.ts":
+/*!****************************************************!*\
+  !*** ./public/engine/core/event-system/emitter.ts ***!
+  \****************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   EventEmitter: () => (/* binding */ EventEmitter)
+/* harmony export */ });
+class EventEmitter {
+    constructor() {
+        this.listeners = new Map();
+    }
+    on(eventType, callback) {
+        var _a;
+        if (!this.listeners.has(eventType)) {
+            this.listeners.set(eventType, []);
+        }
+        (_a = this.listeners.get(eventType)) === null || _a === void 0 ? void 0 : _a.push(callback);
+    }
+    off(eventType, callback) {
+        if (!this.listeners.has(eventType)) {
+            throw new Error("Такого события не существует!");
+        }
+        const callbacks = this.listeners.get(eventType);
+        if (callbacks) {
+            this.listeners.set(eventType, callbacks.filter(cb => cb != callback));
+        }
+    }
+    emit(event) {
+        const callbacks = this.listeners.get(event.type);
+        if (callbacks) {
+            callbacks.forEach(callback => callback(event));
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ "./public/engine/core/event-system/keyboard-manager.ts":
+/*!*************************************************************!*\
+  !*** ./public/engine/core/event-system/keyboard-manager.ts ***!
+  \*************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   KeyboardManager: () => (/* binding */ KeyboardManager)
+/* harmony export */ });
+class KeyboardManager {
+    constructor(emitter) {
+        this.emitter = emitter;
+        window.addEventListener('keydown', this.handleKeyDown.bind(this));
+        window.addEventListener('keyup', this.handleKeyUp.bind(this));
+    }
+    handleKeyDown(event) {
+        this.emitter.emit({
+            type: "keydown",
+            data: { key: event.key, keyCode: event.keyCode }
+        });
+    }
+    handleKeyUp(event) {
+        this.emitter.emit({
+            type: "keyup",
+            data: { key: event.key, keyCode: event.keyCode }
+        });
+    }
+}
+
+
+/***/ }),
+
+/***/ "./public/engine/core/event-system/mouse-manager.ts":
+/*!**********************************************************!*\
+  !*** ./public/engine/core/event-system/mouse-manager.ts ***!
+  \**********************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   MouseManager: () => (/* binding */ MouseManager)
+/* harmony export */ });
+/* harmony import */ var _eng__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../eng */ "./public/engine/core/eng.ts");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/vec4.js");
+/* harmony import */ var gl_matrix__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! gl-matrix */ "./node_modules/gl-matrix/esm/mat4.js");
+
+
+class MouseManager {
+    constructor(emitter) {
+        var _a, _b, _c;
+        this.emitter = emitter;
+        (_a = _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas) === null || _a === void 0 ? void 0 : _a.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        (_b = _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas) === null || _b === void 0 ? void 0 : _b.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        (_c = _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas) === null || _c === void 0 ? void 0 : _c.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    }
+    screenToWorld(x, y, canvasWidth, canvasHeight) {
+        // 1. Переводим координаты экрана в нормализованные координаты устройства (NDC)
+        const ndcX = (x / canvasWidth) * 2 - 1; // От -1 до 1 по оси X
+        const ndcY = 1 - (y / canvasHeight) * 2; // От -1 до 1 по оси Y (инвертируем Y)
+        // 2. Создаем вектор в клиповом пространстве (clip space)
+        const clipSpace = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.fromValues(ndcX, ndcY, -1, 1); // Z = -1 (ближняя плоскость), W = 1
+        // 3. Получаем обратную матрицу проекции и матрицу вида
+        if (!_eng__WEBPACK_IMPORTED_MODULE_0__.Engine.viewMatrix)
+            throw new Error("View matrix is not initialized!");
+        const projectionMatrix = _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.createPerspectiveMatrix(); // Матрица проекции
+        const inverseProjectionMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.create();
+        const inverseViewMatrix = gl_matrix__WEBPACK_IMPORTED_MODULE_2__.create();
+        gl_matrix__WEBPACK_IMPORTED_MODULE_2__.invert(inverseProjectionMatrix, projectionMatrix);
+        gl_matrix__WEBPACK_IMPORTED_MODULE_2__.invert(inverseViewMatrix, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.viewMatrix);
+        // 4. Преобразуем вектор из клипового пространства в мировое пространство
+        const viewSpace = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
+        const worldSpace = gl_matrix__WEBPACK_IMPORTED_MODULE_1__.create();
+        // Применяем обратную матрицу проекции
+        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.transformMat4(viewSpace, clipSpace, inverseProjectionMatrix);
+        // Применяем обратную матрицу вида
+        gl_matrix__WEBPACK_IMPORTED_MODULE_1__.transformMat4(worldSpace, viewSpace, inverseViewMatrix);
+        // 5. Нормализуем вектор (делим на W)
+        const worldX = worldSpace[0] / worldSpace[3] + 0.08;
+        const worldY = worldSpace[1] / worldSpace[3] + 0.026;
+        const worldZ = worldSpace[2] / worldSpace[3];
+        return { worldX, worldY, worldZ };
+    }
+    handleMouseDown(event) {
+        if (!_eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas)
+            throw new Error('Before create manager you must init the game engine!');
+        const { worldX, worldY } = this.screenToWorld(event.clientX, event.clientY, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientWidth, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientHeight);
+        this.emitter.emit({
+            type: "mousedown",
+            data: {
+                x: worldX,
+                y: worldY,
+                button: event.button
+            }
+        });
+    }
+    handleMouseUp(event) {
+        if (!_eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas)
+            throw new Error('Before create manager you must init the game engine!');
+        const { worldX, worldY } = this.screenToWorld(event.clientX, event.clientY, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientWidth, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientHeight);
+        this.emitter.emit({
+            type: "mousedown",
+            data: {
+                x: worldX,
+                y: worldY,
+                button: event.button
+            }
+        });
+    }
+    handleMouseMove(event) {
+        if (!_eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas)
+            throw new Error('Before create manager you must init the game engine!');
+        const { worldX, worldY } = this.screenToWorld(event.clientX, event.clientY, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientWidth, _eng__WEBPACK_IMPORTED_MODULE_0__.Engine.canvas.clientHeight);
+        this.emitter.emit({
+            type: 'mousemove',
+            data: {
+                x: worldX,
+                y: worldY
+            }
+        });
+    }
+}
 
 
 /***/ }),
@@ -4758,6 +4989,7 @@ class Texture {
             image.onerror = () => {
                 reject(new Error(`Failed to load image: ${url}`));
             };
+            image.crossOrigin = 'anonymous';
             image.src = url;
         });
     }
@@ -4875,9 +5107,15 @@ class GameObject {
             return component;
         }
     }
-    RemoveComponent(name) {
-        let component = this.components.findIndex(com => com.name === name);
-        if (component != -1) {
+    RemoveComponent(name, subname) {
+        let components = this.components.filter(com => com.name === name);
+        if (components.length == 1) {
+            let index = this.components.findIndex(comp => comp === components[0]);
+            this.components[index].BeforeRemove();
+            this.components.splice(index, 1);
+        }
+        else if (components.length > 1 && subname) {
+            let component = this.components.findIndex(com => com.subname == subname);
             this.components[component].BeforeRemove();
             this.components.splice(component, 1);
         }
@@ -4902,9 +5140,7 @@ class GameObject {
     }
     toJson() {
         return __awaiter(this, void 0, void 0, function* () {
-            // Ожидаем завершения всех асинхронных операций для компонентов
             const componentsJson = yield Promise.all(this.components.map((component) => __awaiter(this, void 0, void 0, function* () { return yield component.toJson(); })));
-            // Сериализуем объект после завершения всех операций
             return JSON.stringify({
                 tag: this.tag,
                 transform: yield this.transform.toJson(),
