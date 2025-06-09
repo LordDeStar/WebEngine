@@ -10,10 +10,11 @@ export class Camera implements Component {
     public center: vec3;
     public up: vec3;
     public subname: string;
-
-    public isGameStart = false;
+    private speed: number;
+    public allowedToStart = false;
 
     constructor(name: string) {
+        this.speed = 1;
         this.name = "camera";
         this.viewMatrix = mat4.create();
         this.subname = name;
@@ -21,6 +22,28 @@ export class Camera implements Component {
         this.eye = vec3.fromValues(0, 0, 3);
         this.center = vec3.fromValues(0, 0, 5);
         this.up = vec3.fromValues(0, 1, 0);
+
+
+        Engine.eventEmitter.on('keydown', (event) => {
+            const { data } = event;
+            if (!this.owner) throw new Error('Работай кусок говна');
+            switch (data.key) {
+                case 'w':
+                    this.owner.transform.position[2] += this.speed;
+                    break;
+                case 's':
+                    this.owner.transform.position[2] -= this.speed;
+                    break;
+                case 'd':
+                    this.owner.transform.position[0] += this.speed;
+                    this.center[0] += this.speed;
+                    break;
+                case 'a':
+                    this.owner.transform.position[0] -= this.speed;
+                    this.center[0] -= this.speed;
+                    break;
+            }
+        })
     }
 
 
@@ -36,12 +59,12 @@ export class Camera implements Component {
 
     public async OnStart(): Promise<void> {
         this.updateMatrix();
-        if (this.isGameStart) Engine.viewMatrix = this.viewMatrix;
+        if (this.allowedToStart) Engine.viewMatrix = this.viewMatrix;
 
     }
     public OnUpdate(): void {
         this.updateMatrix();
-        if (this.isGameStart) Engine.viewMatrix = this.viewMatrix;
+        if (this.allowedToStart) Engine.viewMatrix = this.viewMatrix;
     }
     public BeforeRemove(): void {
         Engine.viewMatrix = Engine.createViewMatrix();
